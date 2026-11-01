@@ -1,0 +1,120 @@
+﻿/*
+ * ItemInfo.css — 物品信息展示样式
+ *
+ * 布局结构：
+ *   .info-group (flex, bottom-aligned, no-wrap)
+ *     ├── .icon   (div1: 种族图标)
+ *     └── .info-text (div2: 名字 + 星级, 底端堆叠)
+ *           ├── .name
+ *           └── .star
+ */
+
+.info-group {
+  position: fixed;
+  top: 60%;
+  left: 10%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: nowrap;
+  gap: 0;
+  max-width: 95%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.info-group.animate {
+  animation: revealName 0.8s both 1;
+  animation-delay: 1.2s !important;
+  will-change: transform, opacity;
+}
+
+/* === div1: 种族图标 === */
+.icon {
+  flex-shrink: 0;
+}
+
+.race-icon {
+  width: 200px;
+  height: 200px;
+  object-fit: contain;
+  display: block;
+}
+
+/* === div2: 名字 + 星级 === */
+.info-text {
+  margin-left: -1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+.name {
+  white-space: nowrap;
+  font-size: 2.5em;
+  line-height: 1.2em;
+  color: #fff;
+  -webkit-text-stroke: 0.04rem #000;
+}
+
+.star {
+  filter: drop-shadow(0 0 0.25rem rgba(0, 0, 0, 0.5));
+  margin-top: 0.2rem;
+}
+
+.gi-star {
+  color: #f7cf33;
+  font-size: 1.525em;
+  display: inline-block;
+}
+
+.title-char {
+  color: #f7cf33;
+  font-size: 1.525em;
+  display: inline-block;
+}
+
+.title-char.animate {
+  opacity: 0;
+  transform: scale(5);
+  animation: revealStar forwards 0.4s 1;
+}
+
+.gi-star.animate {
+  opacity: 0;
+  transform: scale(5);
+  animation: revealStar forwards 0.4s 1;
+}
+
+@keyframes revealName {
+  from {
+    transform: translate(20px, -50%);
+    opacity: 0;
+  }
+  to {
+    transform: translate(0, -50%);
+    opacity: 1;
+  }
+}
+
+@keyframes revealStar {
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 700px), (max-height: 500px) {
+  .info-group { top: auto; bottom: 1.5rem; left: 1rem; right: 1rem; max-width: none; transform: none; }
+  .info-group.animate { animation-name: revealNameCompact; }
+  .race-icon { width: 64px; height: 64px; }
+  .info-text { min-width: 0; margin-left: 0; }
+  .name { font-size: clamp(1.1rem, 5vw, 1.8rem); white-space: normal; overflow-wrap: anywhere; }
+  .title-char { font-size: 1rem; }
+}
+
+@keyframes revealNameCompact {
+  from { transform: translateX(20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
