@@ -1,4 +1,5 @@
 <script>
+  import DialogCloseButton from "$lib/components/DialogCloseButton.svelte";
   import { onMount } from "svelte";
   import { listWishRecords, resetWishRecords, formatDrawTime } from "$lib/data/wishHistory.js";
 
@@ -55,7 +56,7 @@
   oncancel={(event) => { event.preventDefault(); closeHistory(); }}>
   <header>
     <h2 id="history-title">祈愿记录</h2>
-    <button class="close" aria-label="关闭祈愿记录" onclick={closeHistory}>✕</button>
+    <DialogCloseButton label="关闭祈愿记录" onclick={closeHistory} />
   </header>
   <!-- svelte-ignore a11y_no_noninteractive_tabindex (允许键盘聚焦并滚动记录列表) -->
   <div class="record-list" tabindex="0" role="region" aria-label="过往祈愿结果" aria-busy={loading}>
@@ -103,25 +104,31 @@
   <p>确认后将清空全部祈愿记录，无法恢复。已抽出的角色将重新加入奖池。</p>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   <div class="confirm-actions">
-    <button class="reset" disabled={resetting} onclick={confirmReset}>{resetting ? "正在清空…" : "确认"}</button>
     <button disabled={resetting} onclick={() => confirmationDialog.close()}>取消</button>
+    <button class="reset" disabled={resetting} onclick={confirmReset}>{resetting ? "正在清空…" : "确认"}</button>
   </div>
 </dialog>
 
 <style>
-  dialog { position: fixed; inset: 0; margin: auto; box-sizing: border-box; color: #eee8df; background: #182733; border: 1px solid #639bac; border-radius: 12px; padding: 0; box-shadow: 0 20px 80px #0008; }
-  dialog::backdrop { background: #060e1ac4; }
-  .history { width: min(1000px, calc(100vw - 32px)); max-height: 80dvh; }
+  dialog { position: fixed; inset: 0; margin: auto; box-sizing: border-box; color: #594632; background: #f7efdf; border: 1px solid #dfbf8e; border-radius: 20px; padding: 0; box-shadow: 0 24px 80px #0005; }
+  dialog::backdrop { background: #101a28b8; backdrop-filter: blur(4px); }
+  .history { --dialog-close-background: #eee8e31a; --dialog-close-color: #eee8df; color: #eee8df; background: #182733; border-color: #639bac; border-radius: 12px; box-shadow: 0 20px 80px #0008; width: min(1000px, calc(100vw - 32px)); max-height: min(80dvh, calc(100dvh - 32px)); }
+  .history::backdrop { background: #060e1ac4; backdrop-filter: none; }
+  .history header, .history footer { border-color: #639bac55; }
+  .history h2 { color: #d4b87a; }
+  .history .empty { color: #b1bec8; }
+  .history .error { color: #ffb4a6; }
+  .history .reset { color: #ffd3cb; background: #eee8e31a; border-color: #ca7e6d88; border-radius: 6px; }
+  .history .reset:hover:not(:disabled) { background: #eee8e32e; }
   .history[open] { display: flex; flex-direction: column; }
-  header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid #639bac55; }
-  h2 { margin: 0; color: #d4b87a; font-size: 1.25rem; }
-  button { font: inherit; cursor: pointer; color: #eee8df; background: #eee8e31a; border: 1px solid #b4a07866; border-radius: 6px; padding: 10px 18px; }
-  button:hover:not(:disabled) { background: #eee8e32e; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid #dfbf8e; }
+  h2 { margin: 0; color: #9a592b; font-size: 1.25rem; }
+  button { font: inherit; cursor: pointer; color: #784923; background: #eadac0; border: 1px solid #dfbf8e; border-radius: 20px; padding: 10px 18px; }
+  button:hover:not(:disabled) { background: #e3cba7; }
   button:disabled { opacity: .45; cursor: default; }
-  button:focus-visible, .record-list:focus-visible { outline: 2px solid #d4b87a; outline-offset: 2px; }
-  .close { border: 0; border-radius: 50%; padding: 0; width: 40px; height: 40px; font-size: 1.2rem; }
+  button:focus-visible, .record-list:focus-visible { outline: 3px solid #dc904d; outline-offset: 2px; }
   .record-list { overflow: auto; min-height: 0; overscroll-behavior: contain; padding: 0 24px; }
-  table { width: 100%; min-width: 820px; table-layout: fixed; border-collapse: separate; border-spacing: 0; font-size: .95rem; }
+  table { width: 100%; min-width: 820px; table-layout: fixed; border-collapse: separate; border-spacing: 0; font-size: .95rem; color: #eee8df; background: #182733; }
   .prize-column { width: 23%; } .category-column { width: calc(18%); } .character-column { width: calc(22%); } .count-column { width: 12%; } .time-column { width: 25%; }
   th, td { padding: 15px 12px; text-align: center; vertical-align: middle; border-bottom: 1px solid #639bac44; border-right: 1px solid #639bac33; overflow-wrap: anywhere; }
   th:first-child, td:first-child { border-left: 1px solid #639bac33; }
@@ -147,10 +154,10 @@
   @media (prefers-reduced-motion: reduce) { .special-prize { animation: none; } }
   .count { text-align: center; font-variant-numeric: tabular-nums; }
   time { color: #b1bec8; font-size: .85rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .empty { text-align: center; color: #b1bec8; padding: 40px 0; }
-  footer { padding: 16px 24px; border-top: 1px solid #639bac55; }
-  .reset { color: #ffd3cb; border-color: #ca7e6d88; }
-  .error { color: #ffb4a6; margin: 12px 24px; }
+  .empty { text-align: center; color: #89745b; padding: 40px 0; }
+  footer { padding: 16px 24px; border-top: 1px solid #dfbf8e; }
+  .reset { color: #a34e3e; border-color: #ca7e6d88; }
+  .error { color: #b13928; margin: 12px 24px; }
   .confirmation { width: min(400px, calc(100vw - 32px)); padding: 24px; }
   .confirmation p { line-height: 1.7; }
   .confirmation .error { margin: 12px 0; }

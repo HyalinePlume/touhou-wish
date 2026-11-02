@@ -10,13 +10,6 @@
       "_internal.js"
     ]
   },
-  "_effects.js": {
-    "file": "chunks/effects.js",
-    "name": "effects",
-    "imports": [
-      "_index.js"
-    ]
-  },
   "_exports.js": {
     "file": "chunks/exports.js",
     "name": "exports"
@@ -29,8 +22,7 @@
     "file": "chunks/index2.js",
     "name": "index",
     "imports": [
-      "_index.js",
-      "_effects.js"
+      "_index.js"
     ]
   },
   "_internal.js": {
@@ -45,8 +37,7 @@
     "file": "chunks/root.js",
     "name": "root",
     "imports": [
-      "_index.js",
-      "_effects.js"
+      "_index.js"
     ]
   },
   "_server.js": {
@@ -94,7 +85,7 @@
     "isEntry": true,
     "imports": [
       "_utils.js",
-      "_effects.js",
+      "_index.js",
       "_server.js",
       "_exports.js",
       "_utils2.js",
@@ -124,7 +115,7 @@
       "_index2.js"
     ],
     "css": [
-      "_app/immutable/assets/_page.lms6AJHO.css"
+      "_app/immutable/assets/_page.rblvvF_v.css"
     ]
   },
   "virtual:__sveltekit/env": {

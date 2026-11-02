@@ -16,6 +16,7 @@
   import MissingPrizePrompt from "$lib/components/MissingPrizePrompt.svelte";
   import MultiWishPrompt from "$lib/components/MultiWishPrompt.svelte";
   import HomeTools from "$lib/components/HomeTools.svelte";
+  import { wishTitle, wishSubtitle, mainVisual, backgroundImage, loadHomeContent } from "$lib/data/homeContent.js";
 
   let showMeteor = $state(false);
   let showWishResult = $state(false);
@@ -24,6 +25,14 @@
   let drawAssets = $state(selectWishAssets());
   let drawKey = $state(0);
   let flipped = $state(false);
+  let suspenseEnabled = $state(false);
+  const SUSPENSE_PREFERENCE = "xtm_suspense_enabled";
+
+  function toggleSuspense() {
+    suspenseEnabled = !suspenseEnabled;
+    try { localStorage.setItem(SUSPENSE_PREFERENCE, String(suspenseEnabled)); }
+    catch { /* 存储不可用时保留当前会话的选择。 */ }
+  }
   let showHistory = $state(false);
   let savingDraw = $state(false);
   let historyError = $state("");
@@ -58,16 +67,22 @@
   let currentPrizeTitle = $state('');
   let currentPrizeStars = $state(4);
   const THEME_START_DELAY_MS = 1300; // 新角色动画开始到主题音乐启动的延迟。
+  const SHOW2_START_DELAY_MS = 1100; // 第二段亮相音效的启动时间，后续在此调整。
   let themeTimer;
+  let show2Timer;
 
   onMount(() => {
+    loadHomeContent().catch(() => setHistoryError("首页暂存内容读取失败，请刷新后重试。"));
     playSfx("wishBacksound");
+    try { suspenseEnabled = localStorage.getItem(SUSPENSE_PREFERENCE) === "true"; }
+    catch { /* 存储不可用时使用默认状态。 */ }
     try { skipMissingPrizePrompt = localStorage.getItem(MISSING_PRIZE_PREFERENCE) === "true"; }
     catch { /* 无法访问浏览器偏好时，仍保留当前会话的选择。 */ }
   });
   onDestroy(() => {
     clearTimeout(errorToastTimer);
     clearTimeout(themeTimer);
+    clearTimeout(show2Timer);
     stopTheme();
     if (currentPrizeSrc) URL.revokeObjectURL(currentPrizeSrc);
   });
@@ -133,6 +148,7 @@
         throw new Error("当前奖池仅剩 " + remaining + " 个角色，无法祈愿 " + count + " 次。请减少次数、增加村民数量或重置祈愿记录。");
       }
       clearTimeout(themeTimer);
+      clearTimeout(show2Timer);
       muteBgm();
       drawKey++;
       showMeteor = true;
@@ -156,7 +172,11 @@
   }
 
   function playResultTheme() {
-    playSfx("reveal");
+    playSfx("show1", drawAssets.show1Src);
+    clearTimeout(show2Timer);
+    show2Timer = setTimeout(() => {
+      if (showWishResult) playSfx("show2", drawAssets.show2Src);
+    }, SHOW2_START_DELAY_MS);
     const theme = drawResult[resultIndex]?.theme;
     clearTimeout(themeTimer);
     themeTimer = setTimeout(() => {
@@ -181,6 +201,7 @@
   }
 
   function handleCloseResult() {
+    clearTimeout(show2Timer);
     if (resultIndex + 1 < drawResult.length) {
       clearTimeout(themeTimer);
       fadeOutTheme({ maxDurationMs: THEME_START_DELAY_MS });
@@ -199,6 +220,7 @@
 
   function finishResults() {
     clearTimeout(themeTimer);
+    clearTimeout(show2Timer);
     fadeOutTheme({ skipHold: true, fadeDurationMs: THEME_RETURN_FADE_MS });
     showWishSummary = false;
     unmuteBgm();
@@ -233,14 +255,14 @@
 
 <div class="root" inert={showWishSummary}>
   {#if !showMeteor && !showWishResult && !showWishSummary}<HomeTools />{/if}
-  <section>
+  <section style:background-image={`url(${JSON.stringify($backgroundImage)})`}>
     <div class="col top">
       <div class="header-content">
         <h1 class="wish-title">
           <span class="logo-star">✦</span>
-          <span>东方杏坛铭 · 角色祈愿</span>
+          <span>{$wishTitle}</span>
         </h1>
-        <p class="wish-desc">虽然说抽到了也不能把角色给你，但是，我们的小奖品还是不错的哦</p>
+        <p class="wish-desc">{$wishSubtitle}</p>
       </div>
     </div>
 
@@ -249,7 +271,7 @@
         <div class="flip-container" class:flipped>
           <!-- ============ flip-front ============ -->
           <div class="flip-front banner-card" inert={flipped}>
-            <div class="card-bg"></div>
+            <div class="card-bg" style:background-image={`url(${JSON.stringify($mainVisual)})`}></div>
             <div class="card-glow top-left"></div>
             <div class="card-glow bottom-right"></div>
             <div class="card-border">
@@ -272,7 +294,11 @@
               <span class="prize-name">{currentPrizeName}</span>
             </div>
             <div class="card-info">
-              <button class="detail-btn" onclick={toggleFlip}>设置</button>
+              <button class="detail-btn" type="button" aria-label="设置" title="设置" onclick={toggleFlip}>
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="m19.43 12.98.04-.98-.04-.98 2.11-1.65-2-3.46-2.49 1a7.54 7.54 0 0 0-1.7-.98L15 3.25h-4l-.35 2.68a7.54 7.54 0 0 0-1.7.98l-2.49-1-2 3.46 2.11 1.65-.04.98.04.98-2.11 1.65 2 3.46 2.49-1c.52.4 1.09.73 1.7.98L11 20.75h4l.35-2.68a7.54 7.54 0 0 0 1.7-.98l2.49 1 2-3.46-2.11-1.65ZM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" transform="translate(-1 0)" fill-rule="evenodd" />
+                </svg>
+              </button>
             </div>
           </div>
 
@@ -288,7 +314,8 @@
             <div class="settings-title">奖池设置</div>
             <!-- 三栏容器，左右肩并肩 -->
             <div class="back-panels">
-              <!-- 左：村民数量 -->
+              <!-- 左：村民数量与增加悬念 -->
+              <div class="back-panel-stack">
               <div class="back-panel" id="back-panel-1">
                 <div class="panel-title">村民数量</div>
                 <div class="panel-subtitle">大家都参与进来才有意思嘛！</div>
@@ -310,13 +337,27 @@
                   <div class="control-note" style="text-align: center;">村民数量至多99个</div>
                 </div>
               </div>
+              <div class="back-panel" id="suspense-panel">
+                <div class="panel-title suspense-heading">
+                  <span>增加悬念？</span>
+                  <button class="suspense-toggle" class:enabled={suspenseEnabled}
+                    type="button" role="switch" aria-checked={suspenseEnabled} aria-label="增加悬念"
+                    onclick={toggleSuspense}>{suspenseEnabled ? "启用！" : "禁用。"}</button>
+                </div>
+                <div class="panel-subtitle">启用后，不再直接展示中奖者…</div>
+              </div>
+              </div>
               <div class="back-panel" id="back-panel-2">
                 <div class="panel-title">奖品管理</div>
                 <PrizeManager onSpecify={specifyPrize} />
               </div>
             </div>
             <div class="card-info">
-              <button class="detail-btn" onclick={toggleFlip}>返回</button>
+              <button class="detail-btn" type="button" aria-label="返回" title="返回" onclick={toggleFlip}>
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M3 10 12 3v4c7 0 10 5 10 13-2.5-5-5-7-10-7v4Z" transform="translate(0 24) scale(1 -1)" />
+                </svg>
+              </button>
             </div>
           </div>
         </div>
@@ -329,7 +370,7 @@
           <span class="btn-icon">✦</span> {savingDraw ? "正在抽取…" : "祈愿一次"}
         </button>
         <button class="draw-btn multi-btn" disabled={savingDraw} onclick={() => { showMultiWishPrompt = true; }}>
-          <span class="btn-icon">✦</span> 祈愿多次
+          <span class="btn-icon multi-wish-icon" aria-hidden="true">✦</span> 祈愿多次
         </button>
       {/if}
     </div>
@@ -380,17 +421,14 @@
     justify-content: center;
     align-items: center; 
     overflow: hidden;
-    background:
-      /*
-      radial-gradient(ellipse at 50% 30%, rgba(60, 80, 140, 0.4) 0%, transparent 70%),
-      radial-gradient(ellipse at 80% 80%, rgba(180, 150, 100, 0.08) 0%, transparent 50%),
-      linear-gradient(180deg, #0f0f23 0%, #1a1a35 40%, #16213e 100%);  
-      */
-      url("/img/bg_pic.png") center / cover no-repeat;
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
   }
 
   /* 字体相关设置 */
   .wish-title {
+    position: relative;
     color: #fff; 
     font-size: 2rem; 
     font-weight: 600; 
@@ -403,7 +441,7 @@
     color: rgba(255, 255, 255, 0.6); 
     font-size: 0.85rem; 
     margin-top: 6px; 
-    margin-left: 2px; 
+    margin-left: 0;
   }
   .prize-label {
     font-size: 1.4rem;
@@ -454,6 +492,28 @@
     min-height: 0;
   }
   .btn-icon { margin-right: 0.4rem; font-size: 1.2rem; }
+  .multi-wish-icon {
+    position: relative;
+    display: inline-block;
+    margin-left: 0.25rem;
+    margin-right: 0.65rem;
+  }
+  .multi-wish-icon::before,
+  .multi-wish-icon::after {
+    content: "✦";
+    position: absolute;
+    line-height: 1;
+  }
+  .multi-wish-icon::before {
+    font-size: 0.55rem;
+    left: -0.2rem;
+    top: 0.05rem;
+  }
+  .multi-wish-icon::after {
+    font-size: 0.7rem;
+    right: -0.3rem;
+    top: -0.15rem;
+  }
 
   .col { 
     width: 100%; 
@@ -466,12 +526,18 @@
   }
 
   .header-content { 
+    --title-icon-width: 1.4rem;
+    --title-icon-gap: 12px;
+    padding-left: calc(var(--title-icon-width) + var(--title-icon-gap));
     display: flex; 
     flex-direction: column; 
     align-items: flex-start; 
   }
 
   .logo-star { 
+    position: absolute;
+    left: calc(0px - var(--title-icon-width) - var(--title-icon-gap));
+    width: var(--title-icon-width);
     font-size: 1.4rem; 
     color: #d4b87a; 
   }
@@ -526,7 +592,7 @@
     box-shadow: 0 0 60px rgba(100,130,200,0.15), 0 0 120px rgba(100,80,160,0.08), inset 0 0 80px rgba(0,0,0,0.3);
   }
 
-  .card-bg { position: absolute; inset: 0; z-index: 1; background: url("/img/visual.png") center / cover no-repeat; }
+  .card-bg { position: absolute; inset: 0; z-index: 1; background-position: center; background-size: cover; background-repeat: no-repeat; }
 
   .card-bg-back { position: absolute; inset: 0; z-index: 1; background: url("/img/visual_back.png") center / cover no-repeat; }
 
@@ -555,9 +621,21 @@
     z-index: 5; 
   }
 
-  .detail-btn { background: rgba(255,255,255,0.8); color: #3a3450; border: 2px solid rgba(218,199,156,1); border-radius: 50px; padding: 0.3rem 1.2rem; font-size: 0.85rem; cursor: pointer; transition: all 0.25s; }
+  .detail-btn { background: rgba(255,255,255,0.8); color: #3a3450; border: 2px solid rgba(218,199,156,1); border-radius: 50%; box-sizing: border-box; width: 2rem; height: 2rem; padding: 0; display: grid; place-items: center; cursor: pointer; transition: all 0.25s; }
+
+  .detail-btn svg { width: 65%; height: 65%; }
+
+  .detail-btn:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
 
   .detail-btn:hover { background: rgba(255,255,255,1); color: #1a1a2e; }
+
+  .flip-back .detail-btn {
+    background: rgba(24, 39, 51, 0.92);
+    border-color: rgba(99, 155, 172, 0.6);
+    color: #d4b87a;
+  }
+
+  .flip-back .detail-btn:hover { background: rgba(36, 57, 73, 0.98); }
 
 
 
@@ -604,7 +682,7 @@
     white-space: nowrap;
   }
 
-  /* ========== 三栏容器 ========== */
+  /* ========== 奖池设置左右两栏 ========== */
   .back-panels {
     position: absolute;
     top: 24%;
@@ -615,6 +693,37 @@
     display: flex;
     gap: 3%;
   }
+
+  .back-panel-stack {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 0.6rem;
+  }
+
+  .back-panel-stack > .back-panel { min-height: 0; }
+
+  #suspense-panel .panel-subtitle { min-height: 1lh; margin-bottom: 0; }
+
+  .suspense-heading { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; }
+  .suspense-toggle {
+    flex-shrink: 0;
+    padding: 0.12rem 0.45rem;
+    border: 1px solid rgba(99, 155, 172, 0.6);
+    border-radius: 6px;
+    background: #34434d;
+    color: #c8beb0;
+    font: inherit;
+    font-size: 0.65rem;
+    line-height: 1.4;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+  }
+  .suspense-toggle.enabled { background: #d4b87a; border-color: #d4b87a; color: #182733; }
+  .suspense-toggle:hover { filter: brightness(1.12); }
+  .suspense-toggle:focus-visible { outline: 2px solid #d4b87a; outline-offset: 2px; }
 
   .back-panel{
     flex: 1;
@@ -730,6 +839,7 @@
   }
 
   @media (max-width: 700px) {
+    .header-content { --title-icon-gap: 0.4rem; }
     .top { padding-top: 80px; }
     .button { padding: 1rem; gap: .5rem; }
     .draw-btn { padding: .9rem 1rem; font-size: .95rem; }
@@ -743,6 +853,7 @@
     .flip-container.flipped .flip-back { display: flex; flex-direction: column; }
     .settings-title { position: relative; top: auto; left: auto; transform: none; padding: 1rem; text-align: center; }
     .back-panels { position: relative; inset: auto; flex-direction: column; gap: 1rem; padding: 0 1rem; }
+    .back-panel-stack { flex: none; grid-template-rows: auto auto; gap: 1rem; }
     .back-panel { min-width: 0; padding: 1rem; background: rgba(24, 39, 51, 0.92); }
     .panel-title { font-size: 1.1rem; }
     .panel-subtitle { font-size: 0.8rem; margin-bottom: 0.8rem; }
@@ -752,7 +863,7 @@
     .adj-btn { width: 44px; height: 44px; }
     .settings-value-input { min-height: 44px; }
     .flip-back .card-info { position: relative; inset: auto; padding: 1rem; text-align: right; }
-    .detail-btn { min-height: 44px; }
+    .detail-btn { width: 44px; height: 44px; display: inline-grid; }
     .prize-preview { width: 33%; }
     .prize-label { font-size: 1rem; }
     .prize-name { font-size: 0.75rem; }

@@ -1,19 +1,4 @@
-import { n as noop } from "./index.js";
-import { u as untrack, O as safe_not_equal } from "./effects.js";
-function subscribe_to_store(store, run, invalidate) {
-  if (store == null) {
-    run(void 0);
-    return noop;
-  }
-  const unsub = untrack(
-    () => store.subscribe(
-      run,
-      // @ts-expect-error
-      invalidate
-    )
-  );
-  return unsub.unsubscribe ? () => unsub.unsubscribe() : unsub;
-}
+import { n as noop, ae as safe_not_equal, af as subscribe_to_store } from "./index.js";
 const subscriber_queue = [];
 function readable(value, start) {
   return {

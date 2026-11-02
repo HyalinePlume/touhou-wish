@@ -14,10 +14,9 @@ const THEME_FADE_IN_MS = 2000;
 export const THEME_EXIT_HOLD_MS = 9000; // 切换至下一曲时，上一曲的保留时间。仅当下一曲出bug了一直不播才可能用得上
 export const THEME_EXIT_FADE_MS = 1300;
 export const THEME_RETURN_FADE_MS = 300;
-// 背景音乐，还有抽卡时立绘亮相的音效选择
+// 固定背景音乐；两段亮相音效由本次抽奖的素材参数传入。
 const sources = {
   wishBacksound: "/sfx/wish_backsound.mp3",
-  reveal:   "/sfx/show.mp3",
 };
 const cache = {};
 /* BGM 只能启动一次，防止 HMR 热更新或组件重挂导致重叠播放 */
@@ -48,8 +47,13 @@ export function playDing() {
     ding.currentTime = 0;
   };
 }
-export function playSfx(name = "click") {
+export function playSfx(name = "click", src) {
   if (!browser) return;
+  if (src && cache[name]?.getAttribute("src") !== src) {
+    cache[name]?.pause();
+    cache[name] = new Audio(src);
+    cache[name].preload = "auto";
+  }
   const audio = cache[name];
   if (!audio) return false;
   /* BGM 特殊处理：已启动过一次就不再重新 play，防止重叠 */
