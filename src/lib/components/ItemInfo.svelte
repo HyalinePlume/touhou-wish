@@ -4,8 +4,9 @@
    *
    * 动画时序（animation-delay 控制）：
    *   1.2s — 图标淡入
-   *   1.3s — 名字从右侧滑入
+   *   1.2s — 名字与图标一起滑入
    *   2.0s+ — 称号字符逐个弹出（间隔 0.15s），每个字触发一次 ding.mp3
+   *   以上为正常模式时序；悬念模式的音频从第二段续播时刻调度。
    *
    * info-group 不挂 use:removeAnimClass，避免 animationend 瞬间
    * 移除 anim 类导致的 layout 重算与称号动画同步触发时的视觉跳动。
@@ -16,6 +17,7 @@
 
   export let staticMode = false;
   export let active = true;
+  export let deferTitleAudio = false;
   export let itemName = "博丽灵梦";
   export let race = 0;
   export let itemTitle = "";
@@ -34,15 +36,20 @@
   // 关闭时立即取消，不能等退出动画完成后才清理。
   $: if (!active) stopTitleAudio();
 
-  onMount(() => {
+  export function startTitleAudio(delayMs = 2000) {
+    stopTitleAudio();
     if (staticMode || !active || !itemTitle) return;
-    /* 称号每个字在 2s + i*0.15s 时出现，同步播放 ding */
+    /* 与视觉时间轴同步；第二段续播时首字剩余 1s。 */
     const chars = itemTitle.split("");
     timers = chars.map((_, i) =>
       setTimeout(() => {
         if (active) stopSounds.push(playDing());
-      }, (2 + i * 0.15 + DING_OFFSET) * 1000)
+      }, delayMs + (i * 0.15 + DING_OFFSET) * 1000)
     );
+  }
+
+  onMount(() => {
+    if (!deferTitleAudio) startTitleAudio();
     return stopTitleAudio;
   });
 </script>

@@ -11,6 +11,7 @@
   import PrizeManager from "$lib/components/PrizeManager.svelte";
   import { prizeTitle, prizeStars } from "$lib/data/prizes.js";
   import { selectWishAssets } from "$lib/helpers/wishAssets.js";
+  import { RESULT_FIRST_PHASE_MS } from "$lib/helpers/resultPlayback.js";
   import WishHistory from "$lib/components/WishHistory.svelte";
   import { drawAndSaveWishRecord, listWishRecords } from "$lib/data/wishHistory.js";
   import MissingPrizePrompt from "$lib/components/MissingPrizePrompt.svelte";
@@ -174,14 +175,19 @@
   function playResultTheme() {
     playSfx("show1", drawAssets.show1Src);
     clearTimeout(show2Timer);
+    clearTimeout(themeTimer);
+  }
+
+  function playSecondPhaseAudio() {
+    clearTimeout(show2Timer);
     show2Timer = setTimeout(() => {
       if (showWishResult) playSfx("show2", drawAssets.show2Src);
-    }, SHOW2_START_DELAY_MS);
+    }, Math.max(0, SHOW2_START_DELAY_MS - RESULT_FIRST_PHASE_MS));
     const theme = drawResult[resultIndex]?.theme;
     clearTimeout(themeTimer);
     themeTimer = setTimeout(() => {
       if (showWishResult || showWishSummary) playTheme(theme);
-    }, THEME_START_DELAY_MS);
+    }, Math.max(0, THEME_START_DELAY_MS - RESULT_FIRST_PHASE_MS));
   }
 
   function finishMeteor() {
@@ -393,6 +399,7 @@
 {#if showWishResult}
   {#key `${drawKey}:${resultIndex}`}
     <WishResult list={[drawResult[resultIndex]]} assets={drawAssets} skip={false} onClose={handleCloseResult}
+      {suspenseEnabled} onSecondPhase={playSecondPhaseAudio}
       position={resultIndex + 1} total={drawResult.length} />
   {/key}
 {/if}

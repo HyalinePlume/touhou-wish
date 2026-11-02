@@ -5,7 +5,7 @@
    * 照抄原项目 WishResult.svelte 的结构：
    *   全屏深色背景 → 立绘 + 光圈 + 物品信息
    *
-   * 动画时序（原项目的编排）：
+   * 动画时序（1s后允许揭晓；第一轮粒子与入场光圈独立完整播放）：
    *   SplashLight(in)     → 立刻开始
    *   SplashArt           → 1.5s splashart keyframes（从 scale(5) 缩小 + brightness(0→1)）
    *   ItemInfo            → 1.2s 图标淡入 / 1.3s 名字滑入 / 2s+ 星星依次弹出
@@ -18,6 +18,7 @@
   import ItemInfo from './ItemInfo.svelte';
   import ParticleBurst from './ParticleBurst.svelte';
   import SecondarySfx from './SecondarySfx.svelte';
+  import { startResultPlayback } from '$lib/helpers/resultPlayback.js';
 
   export let list = [];
   export let assets;
@@ -25,31 +26,42 @@
   export let onClose = () => {};
   export let position = 1;
   export let total = 1;
+  export let suspenseEnabled = false;
+  export let onSecondPhase = () => {};
 
   let isSplashOut = false;
   let timer;
   let closing = false;
   let itemInfo;
+  let resultNode;
+  let stopPlayback;
 
   function closeResult() {
     if (closing) return;
     itemInfo?.stopTitleAudio();
     closing = true;
+    stopPlayback?.();
     clearTimeout(timer);
     onClose();
   }
 
-  const startTimer = () => {
-    clearTimeout(timer);
-    isSplashOut = false;
+  function startSecondPhase() {
+    if (closing) return;
+    onSecondPhase();
+    itemInfo?.startTitleAudio(1000);
     timer = setTimeout(() => {
       isSplashOut = true;
-    }, 1100);
-  };
+    }, 100); // 原时间轴 1.1s，即第二段开始后 100ms。
+  }
 
   onMount(() => {
-    if (!skip) startTimer();
-    return () => clearTimeout(timer);
+    stopPlayback = startResultPlayback({
+      node: resultNode, suspense: suspenseEnabled && !skip, onSecondPhase: startSecondPhase
+    });
+    return () => {
+      stopPlayback();
+      clearTimeout(timer);
+    };
   });
 </script>
 
@@ -58,7 +70,7 @@
   去掉了多抽结果列表(ResultList)、分享按钮、logo 等我们不需要的部分
   保留了核心的 art-wrapper → SplashLight + SplashArt + ItemInfo 结构
 -->
-<div class="wish-result" out:fade={{ duration: 250 }}>
+<div class="wish-result" bind:this={resultNode} out:fade={{ duration: 250 }}>
   <div class="bg-layer"></div>
   {#if total > 1}<div class="result-progress" aria-live="polite">{position} / {total}</div>{/if}
   <!-- 关闭按钮（出场光效后显示） -->
@@ -99,8 +111,8 @@
             <SecondarySfx sources={assets.secondarySources} />
           </div>
 
-          <!-- 进场光圈 -->
-          {#if !isSplashOut && !skip}
+          <!-- 入场光圈独立播完，不随第二轮启动而提前移除。 -->
+          {#if !skip}
             <SplashLight type="in" rarity={item.rarity || 4} />
           {/if}
 
@@ -114,6 +126,7 @@
           <!-- 物品信息 -->
           <ItemInfo
             bind:this={itemInfo}
+            deferTitleAudio={true}
             active={!closing}
             itemName={item.name || '博丽灵梦'}
             itemTitle={item.title || ''}

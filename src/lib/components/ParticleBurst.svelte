@@ -77,7 +77,7 @@
   });
 </script>
 
-<div class="burst">
+<div class="burst" data-result-independent>
   {#each particles as p, i (i)}
     <img class="p" src={sources[p.imgNum - 1]} alt=""
          style="left:{p.x}px;top:{p.y}px" use:animateParticle={p} />

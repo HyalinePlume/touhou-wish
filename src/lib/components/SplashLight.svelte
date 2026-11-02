@@ -11,11 +11,11 @@
 </script>
 
 {#if type === 'in'}
-  <div class="star4 orbs in5"></div>
-  <div class="in star4 orbs in1" style="animation-duration: 1s;"></div>
-  <div class="in star4 orbs in2" style="animation-duration: 1.2s;"></div>
-  <div class="in star4 orbs in3" style="animation-duration: 1.1s;"></div>
-  <div class="in star4 orbs in4" style="animation-duration: .75s;"></div>
+  <div class="star4 orbs in5" data-result-independent></div>
+  <div class="in star4 orbs in1" data-result-independent style="animation-duration: 1s;"></div>
+  <div class="in star4 orbs in2" data-result-independent style="animation-duration: 1.2s;"></div>
+  <div class="in star4 orbs in3" data-result-independent style="animation-duration: 1.1s;"></div>
+  <div class="in star4 orbs in4" data-result-independent style="animation-duration: .75s;"></div>
 {/if}
 
 {#if type === 'out'}
