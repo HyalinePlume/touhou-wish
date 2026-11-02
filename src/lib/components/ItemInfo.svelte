@@ -56,13 +56,15 @@
 
 <div class="info">
   <div class="info-group" class:animate={!staticMode}>
-    <div class="icon vision">
+    <div class="icon vision" class:animated-icon={!staticMode} style:--race-mask={'url("/img/race_' + race + '.png")'}>
       <img
         src={"/img/race_" + race + ".png"}
         alt="Race"
         class="race-icon"
         width="200px"
       />
+      <span class="race-silver" aria-hidden="true"></span>
+      <span class="race-fluorescence" aria-hidden="true"></span>
     </div>
 
     <div class="info-text">

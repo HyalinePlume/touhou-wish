@@ -1,10 +1,32 @@
 <script>
+  import { onDestroy } from "svelte";
+  import { createHomeImageView, prepareHomeImage } from "$lib/helpers/homeImages.js";
   import { get } from "svelte/store";
   import DialogCloseButton from "$lib/components/DialogCloseButton.svelte";
-  import { wishTitle, wishSubtitle, mainVisual, backgroundImage, loadHomeContent, setHomeContent, resetWishTitle, resetWishSubtitle, resetMainVisual, resetBackgroundImage } from "$lib/data/homeContent.js";
+  import { wishTitle, wishSubtitle, getHomeImage, loadHomeContent, setHomeContent, resetWishTitle, resetWishSubtitle, resetMainVisual, resetBackgroundImage } from "$lib/data/homeContent.js";
 
   let dialog;
   let draft = $state({ wishTitle: "", wishSubtitle: "", mainVisual: "", backgroundImage: "" });
+  let images = $state.raw({ mainVisual: null, backgroundImage: null });
+  const ownedViews = new Set();
+  function releaseDraftImages() {
+    for (const view of ownedViews) view.dispose();
+    ownedViews.clear();
+    images = { mainVisual: null, backgroundImage: null };
+  }
+  onDestroy(releaseDraftImages);
+
+  function setImage(key, view) {
+    const previous = images[key];
+    images = { ...images, [key]: view };
+    draft[key] = view.name ? "" : view.url;
+    if (ownedViews.delete(previous)) previous.dispose();
+  }
+
+  function enterImageUrl(key, value) {
+    setImage(key, createHomeImageView(value));
+  }
+
   let error = $state("");
   let loading = $state(false);
   let session = 0;
@@ -12,7 +34,10 @@
   let backgroundInput;
 
   function loadCurrent() {
-    draft = { wishTitle: get(wishTitle), wishSubtitle: get(wishSubtitle), mainVisual: get(mainVisual), backgroundImage: get(backgroundImage) };
+    releaseDraftImages();
+    draft = { wishTitle: get(wishTitle), wishSubtitle: get(wishSubtitle), mainVisual: "", backgroundImage: "" };
+    setImage("mainVisual", getHomeImage("mainVisual"));
+    setImage("backgroundImage", getHomeImage("backgroundImage"));
     error = "";
     visualInput.value = "";
     backgroundInput.value = "";
@@ -44,13 +69,11 @@
     error = "";
     loading = true;
     try {
-      const source = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = () => reject(new Error("图片读取失败，请重新选择。"));
-        reader.readAsDataURL(file);
-      });
-      if (session === currentSession) draft[key] = source;
+      const value = await prepareHomeImage({ blob: file, name: file.name });
+      if (session !== currentSession) return;
+      const view = createHomeImageView(value);
+      ownedViews.add(view);
+      setImage(key, view);
     } catch (cause) {
       if (session === currentSession) error = cause.message;
     } finally {
@@ -65,7 +88,7 @@
     loading = true;
     error = "";
     try {
-      await setHomeContent({ ...draft });
+      await setHomeContent({ ...draft, mainVisual: images.mainVisual.value, backgroundImage: images.backgroundImage.value });
       if (session === currentSession) dialog.close();
     } catch {
       if (session === currentSession) error = "保存失败，请检查浏览器存储空间或权限后重试。";
@@ -81,7 +104,8 @@
     try {
       const value = await reset();
       if (session !== currentSession) return;
-      draft[key] = value;
+      if (key === "mainVisual" || key === "backgroundImage") setImage(key, getHomeImage(key));
+      else draft[key] = value;
       if (key === "mainVisual") visualInput.value = "";
       if (key === "backgroundImage") backgroundInput.value = "";
     } catch {
@@ -93,7 +117,7 @@
 
 </script>
 
-<dialog bind:this={dialog} aria-labelledby="home-editor-title" onclose={() => { session++; }}>
+<dialog bind:this={dialog} aria-labelledby="home-editor-title" onclose={() => { session++; releaseDraftImages(); }}>
   <form onsubmit={save}>
     <header>
       <h2 id="home-editor-title">编辑首页内容</h2>
@@ -118,10 +142,11 @@
           <label for="home-main-visual">图片地址</label>
           <button class="restore" type="button" disabled={loading} onclick={() => restore("mainVisual", resetMainVisual)}>恢复默认值</button>
         </div>
-        <input id="home-main-visual" type="text" disabled={loading} bind:value={draft.mainVisual} placeholder="输入图片地址，或选择本地图片" />
+        <input id="home-main-visual" type="text" disabled={loading} value={draft.mainVisual} oninput={(event) => enterImageUrl("mainVisual", event.currentTarget.value)} placeholder="输入图片地址，或选择本地图片" />
         <label class="file-label" for="home-visual-file">选择本地图片</label>
         <input id="home-visual-file" type="file" accept="image/*" bind:this={visualInput} disabled={loading} onchange={(event) => selectImage(event, "mainVisual")} />
-        {#if draft.mainVisual}<img class="preview" src={draft.mainVisual} alt="主视觉图预览" />{/if}
+        {#if images.mainVisual?.name}<p class="image-name">{images.mainVisual.name}（本地图片）</p>{/if}
+        {#if images.mainVisual?.preview}<img class="preview" decoding="async" src={images.mainVisual.preview} alt="主视觉图预览" />{/if}
       </fieldset>
       <fieldset>
         <legend>背景图</legend>
@@ -129,14 +154,15 @@
           <label for="home-background">图片地址</label>
           <button class="restore" type="button" disabled={loading} onclick={() => restore("backgroundImage", resetBackgroundImage)}>恢复默认值</button>
         </div>
-        <input id="home-background" type="text" disabled={loading} bind:value={draft.backgroundImage} placeholder="输入图片地址，或选择本地图片" />
+        <input id="home-background" type="text" disabled={loading} value={draft.backgroundImage} oninput={(event) => enterImageUrl("backgroundImage", event.currentTarget.value)} placeholder="输入图片地址，或选择本地图片" />
         <label class="file-label" for="home-background-file">选择本地图片</label>
         <input id="home-background-file" type="file" accept="image/*" bind:this={backgroundInput} disabled={loading} onchange={(event) => selectImage(event, "backgroundImage")} />
-        {#if draft.backgroundImage}<img class="preview" src={draft.backgroundImage} alt="背景图预览" />{/if}
+        {#if images.backgroundImage?.name}<p class="image-name">{images.backgroundImage.name}（本地图片）</p>{/if}
+        {#if images.backgroundImage?.preview}<img class="preview" decoding="async" src={images.backgroundImage.preview} alt="背景图预览" />{/if}
       </fieldset>
       </div>
     </div>
-    <p class="note">内容保存后会暂存在当前浏览器，不会因刷新而重置</p>
+    <p class="note">主视觉图请裁剪为2:1横幅；背景图推荐进行一定高斯模糊处理</p>
     <p class="note"></p>
     {#if loading}<p role="status">正在处理，请稍候…</p>{/if}
     {#if error}<p class="error" role="alert">{error}</p>{/if}
@@ -167,6 +193,7 @@
   legend { padding: 0 6px; color: #9a592b; }
   input[type="file"] { width: 100%; min-width: 0; font-size: .8rem; }
   .file-label { font-size: .8rem; font-weight: 400; }
+  .image-name { margin: 0; font-size: .8rem; overflow-wrap: anywhere; }
   .preview { display: block; width: 100%; height: 120px; object-fit: contain; border-radius: 6px; background: #eadac0; }
   .note { font-size: .78rem; line-height: 1.7; color: #89745b; margin: 8px 0; }
   .error { color: #b13928; }

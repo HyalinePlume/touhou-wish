@@ -1,4 +1,5 @@
 import { writable } from "svelte/store";
+import { createHomeImageView, isLocalImage, prepareHomeImage } from "$lib/helpers/homeImages.js";
 
 /** 首页文案和图片的默认值；图片值为可用于 CSS 的图片地址。 */
 export const DEFAULT_HOME_CONTENT = Object.freeze({
@@ -15,8 +16,14 @@ export const backgroundImage = writable(DEFAULT_HOME_CONTENT.backgroundImage);
 
 const contentStores = { wishTitle, wishSubtitle, mainVisual, backgroundImage };
 let loadPromise;
+const imageKeys = ["mainVisual", "backgroundImage"];
+const imageViews = {};
 
-// 与奖品使用相同的 IndexedDB 机制，独立数据库保存文案和图片数据地址。
+export function getHomeImage(key) {
+  return imageViews[key] || createHomeImageView(DEFAULT_HOME_CONTENT[key]);
+}
+
+// 独立数据库保存文案、原图 Blob 和预览缩略图。
 function transaction(mode, run) {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open("xtm_home_content", 1);
@@ -43,7 +50,16 @@ function transaction(mode, run) {
 
 function applyContent(values) {
   for (const [key, store] of Object.entries(contentStores)) {
-    if (typeof values?.[key] === "string") store.set(values[key]);
+    const value = values?.[key];
+    if (imageKeys.includes(key)) {
+      if (typeof value !== "string" && !isLocalImage(value)) continue;
+      if (imageViews[key]?.value === value) continue;
+      const previous = imageViews[key];
+      imageViews[key] = createHomeImageView(value);
+      store.set(imageViews[key].url);
+      // 留出一帧，让页面先换用新地址。
+      if (previous) requestAnimationFrame(() => previous.dispose());
+    } else if (typeof value === "string") store.set(value);
   }
 }
 
@@ -53,7 +69,13 @@ export function loadHomeContent() {
   if (!loadPromise) {
     loadPromise = transaction("readonly", (store, done) => {
       store.get("home").onsuccess = event => done(event.target.result);
-    }).then(values => { applyContent(values); }).catch(cause => { loadPromise = undefined; throw cause; });
+    }).then(async values => {
+      const prepared = { ...values };
+      await Promise.all(imageKeys.map(async key => {
+        if (prepared[key] !== undefined) prepared[key] = await prepareHomeImage(prepared[key]);
+      }));
+      applyContent(prepared);
+    }).catch(cause => { loadPromise = undefined; throw cause; });
   }
   return loadPromise;
 }
@@ -63,11 +85,19 @@ export async function setHomeContent(values) {
   values = { ...values };
   // 先检查所有字段，避免错误输入导致部分字段已被修改。
   for (const [key, value] of Object.entries(values)) {
-    if (!Object.hasOwn(contentStores, key) || typeof value !== "string") {
+    if (!Object.hasOwn(contentStores, key) || (typeof value !== "string" && !(imageKeys.includes(key) && isLocalImage(value)))) {
       throw new TypeError(`无效的首页内容字段或值：${key}`);
     }
   }
   await loadHomeContent();
+  // 保存时也将旧 Base64 图片迁移为 Blob；不把临时 URL 写入数据库。
+  for (const key of imageKeys) {
+    const value = Object.hasOwn(values, key) ? values[key] : getHomeImage(key).value;
+    values[key] = await prepareHomeImage(value);
+    if (typeof values[key] === "string" && values[key].startsWith("blob:")) {
+      throw new TypeError("临时图片地址不能持久保存，请选择本地图片。");
+    }
+  }
   const saved = await transaction("readwrite", (store, done) => {
     store.get("home").onsuccess = event => {
       const merged = { ...DEFAULT_HOME_CONTENT, ...event.target.result, ...values };

@@ -364,7 +364,12 @@
                   <span>增加悬念？</span>
                   <button class="suspense-toggle" class:enabled={suspenseEnabled}
                     type="button" role="switch" aria-checked={suspenseEnabled} aria-label="增加悬念"
-                    onclick={toggleSuspense}>{suspenseEnabled ? "启用！" : "禁用。"}</button>
+                    onclick={toggleSuspense}>
+                    <span class="suspense-label-track" aria-hidden="true">
+                      <span>启用！</span>
+                      <span>禁用。</span>
+                    </span>
+                  </button>
                 </div>
                 <div class="panel-subtitle">启用后，不再直接展示中奖者…</div>
               </div>
@@ -765,8 +770,12 @@
 
   .suspense-heading { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; }
   .suspense-toggle {
+    position: relative;
+    overflow: hidden;
+    width: calc(3em + 0.9rem);
+    height: calc(1.4em + 0.24rem + 2px);
     flex-shrink: 0;
-    padding: 0.12rem 0.45rem;
+    padding: 0;
     border: 1px solid rgba(99, 155, 172, 0.6);
     border-radius: 6px;
     background: #34434d;
@@ -775,7 +784,24 @@
     font-size: 0.65rem;
     line-height: 1.4;
     cursor: pointer;
-    transition: background 0.2s, color 0.2s, border-color 0.2s;
+    transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease;
+  }
+  .suspense-label-track {
+    display: flex;
+    width: 200%;
+    height: 100%;
+    transform: translateX(-50%);
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .suspense-label-track > span {
+    flex: 0 0 50%;
+    display: grid;
+    place-items: center;
+    white-space: nowrap;
+  }
+  .suspense-toggle.enabled .suspense-label-track { transform: translateX(0); }
+  @media (prefers-reduced-motion: reduce) {
+    .suspense-toggle, .suspense-label-track { transition: none; }
   }
   .suspense-toggle.enabled { background: #d4b87a; border-color: #d4b87a; color: #182733; }
   .suspense-toggle:hover { filter: brightness(1.12); }

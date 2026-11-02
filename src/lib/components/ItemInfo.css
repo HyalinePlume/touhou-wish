@@ -31,6 +31,8 @@
 
 /* === div1: 种族图标 === */
 .icon {
+  position: relative;
+  isolation: isolate;
   flex-shrink: 0;
 }
 
@@ -39,6 +41,61 @@
   height: 200px;
   object-fit: contain;
   display: block;
+  opacity: 0;
+}
+
+/* 使用原图透明轮廓作为蒙版，保留各个种族图案的细节。 */
+.race-silver,
+.race-fluorescence {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  -webkit-mask: var(--race-mask) center / contain no-repeat;
+  mask: var(--race-mask) center / contain no-repeat;
+}
+
+.race-silver {
+  background: #c0c0c0;
+}
+
+/* 沿用大光晕的揭示时机；1.22～1.4s 满亮扩散，随后淡出至 2s。 */
+.animated-icon::before {
+  content: "";
+  position: absolute;
+  inset: -30%;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(ellipse, #ffffff 0%, #f0f6ffdd 22%, #cde3ff88 42%, transparent 68%);
+  opacity: 0;
+  animation: raceHalo 2s ease-out both;
+}
+
+.race-fluorescence {
+  background: linear-gradient(115deg, transparent 32%, #ffffff50 43%, #fff 50%, #ffffff70 56%, transparent 67%);
+  background-size: 300% 100%;
+  opacity: 0;
+}
+
+.animated-icon .race-fluorescence {
+  animation: raceFluorescence 16s linear 1.2s infinite;
+}
+
+@keyframes raceHalo {
+  0%, 60% { opacity: 0; transform: scale(1); }
+  61% { opacity: 1; transform: scale(.75); }
+  70% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+
+@keyframes raceFluorescence {
+  0% { opacity: 0; background-position: 100% 0; }
+  12% { opacity: .95; }
+  65% { opacity: .95; }
+  80%, 100% { opacity: 0; background-position: 0% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animated-icon .race-fluorescence { animation: none; }
 }
 
 /* === div2: 名字 + 星级 === */
