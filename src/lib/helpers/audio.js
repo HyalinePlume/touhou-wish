@@ -24,9 +24,11 @@ const sources = {
 };
 const cache = {};
 export const bgmPlaying = writable(false);
+// 可听音量比例，同时作为唱片转速；播放失败、缓冲或静音时为 0。
+export const bgmPlaybackLevel = writable(0);
 let userBgmMuted = false;
 let bgmSuppressed = false;
-let savedBgmVolume = BGM_VOLUME;
+const savedBgmVolume = BGM_VOLUME;
 if (browser) {
   Object.entries(sources).forEach(([name, src]) => {
     const audio = new Audio(src);
@@ -35,7 +37,11 @@ if (browser) {
       audio.loop = true;
       audio.volume = BGM_VOLUME;
       let playing = false;
-      const syncPlaying = () => bgmPlaying.set(playing && !audio.paused && !audio.muted && audio.volume > 0);
+      const syncPlaying = () => {
+        const audible = playing && !audio.paused && !audio.muted;
+        bgmPlaying.set(audible && audio.volume > 0);
+        bgmPlaybackLevel.set(audible ? Math.min(1, audio.volume / BGM_VOLUME) : 0);
+      };
       audio.addEventListener("playing", () => { playing = true; syncPlaying(); });
       for (const event of ["pause", "waiting", "ended", "error", "emptied"]) {
         audio.addEventListener(event, () => { playing = false; syncPlaying(); });
@@ -97,16 +103,33 @@ export function playSfx(name = "click", src) {
 }
 export function isBgmMuted() { return userBgmMuted; }
 
+/** 共用音量过渡；中途切换时从当前音量继续，避免跳变。 */
+function fadeBgmVolume(bgm, target, durationMs = BGM_FADE_IN_MS) {
+  clearInterval(bgm._fadeTimer);
+  bgm._fadeTimer = null;
+  const startVolume = bgm.volume;
+  if (durationMs <= 0 || startVolume === target) {
+    bgm.volume = target;
+    return;
+  }
+  const startedAt = performance.now();
+  bgm._fadeTimer = setInterval(() => {
+    const progress = Math.min(1, (performance.now() - startedAt) / durationMs);
+    bgm.volume = startVolume + (target - startVolume) * progress;
+    if (progress >= 1) {
+      clearInterval(bgm._fadeTimer);
+      bgm._fadeTimer = null;
+    }
+  }, 1000 / 30);
+}
+
 /** 用户开关只改变 BGM 音量；播放进度继续，且独立于祈愿期间的临时静音。 */
 export function setBgmMuted(muted) {
   if (!browser || userBgmMuted === muted) return;
   const bgm = cache["wishBacksound"];
   if (!bgm) return;
-  if (muted && !bgmSuppressed && bgm.volume > 0) savedBgmVolume = bgm.volume;
   userBgmMuted = muted;
-  clearInterval(bgm._fadeTimer);
-  bgm._fadeTimer = null;
-  bgm.volume = muted || bgmSuppressed ? 0 : savedBgmVolume;
+  fadeBgmVolume(bgm, muted || bgmSuppressed ? 0 : savedBgmVolume);
   if (!muted) playSfx("wishBacksound");
 }
 
@@ -131,19 +154,7 @@ export function unmuteBgm(duration = BGM_FADE_IN_MS / 1000) {
   if (userBgmMuted) { bgm.volume = 0; return; }
   /* 如果 BGM 因浏览器策略暂停了，先恢复播放 */
   if (bgm.paused) startBgm(bgm);
-  bgm._fadeTimer && clearInterval(bgm._fadeTimer);
-  const target = savedBgmVolume;
-  const steps = Math.max(1, duration * 30);
-  const delta = target / steps;
-  let step = 0;
-  bgm._fadeTimer = setInterval(() => {
-    step++;
-    bgm.volume = Math.min(delta * step, target);
-    if (step >= steps) {
-      clearInterval(bgm._fadeTimer);
-      bgm._fadeTimer = null;
-    }
-  }, 1000 / 30);
+  fadeBgmVolume(bgm, savedBgmVolume, duration * 1000);
 }
 
 let themeAudio = null;

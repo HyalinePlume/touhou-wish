@@ -91,7 +91,7 @@ function selectWishAssets({ rarity = 4, drawMode = "single" } = {}) {
     rarity,
     drawMode,
     show1Src: `/sfx/show1_${SHOW_SFX_STARS[rarity]}stars.mp3`,
-    show2Src: `/sfx/show2_${SHOW_SFX_STARS[rarity]}stars.mp3`,
+    show2Src: "/sfx/show2.mp3",
     videoSrc: `/videos/${rarity}star-${drawMode}.mp4`,
     vfxDirectory,
     lightSrc: `${vfxDirectory}/light.png`,
