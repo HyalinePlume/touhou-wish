@@ -28,6 +28,7 @@
   export let total = 1;
   export let suspenseEnabled = false;
   export let onSecondPhase = () => {};
+  export let onPlaybackStart = () => {};
 
   let isSplashOut = false;
   let timer;
@@ -47,7 +48,7 @@
 
   function startSecondPhase() {
     if (closing) return;
-    onSecondPhase();
+    onSecondPhase(suspenseEnabled && !skip);
     itemInfo?.startTitleAudio(1000);
     timer = setTimeout(() => {
       isSplashOut = true;
@@ -55,6 +56,7 @@
   }
 
   onMount(() => {
+    onPlaybackStart(suspenseEnabled && !skip);
     stopPlayback = startResultPlayback({
       node: resultNode, suspense: suspenseEnabled && !skip, onSecondPhase: startSecondPhase
     });

@@ -51,8 +51,10 @@
 }
 
 .name {
+  transform: translateX(-0.2em);
+  font-family: "FZCuJinLing", "Microsoft YaHei", sans-serif;
   white-space: nowrap;
-  font-size: 2.5em;
+  font-size: 5em;
   line-height: 1.2em;
   color: #fff;
   -webkit-text-stroke: 0.04rem #000;
@@ -70,6 +72,7 @@
 }
 
 .title-char {
+  font-family: "ProjectHYDaHeiJ", "Microsoft YaHei", sans-serif;
   color: #f7cf33;
   font-size: 1.525em;
   display: inline-block;
@@ -110,7 +113,7 @@
   .info-group.animate { animation-name: revealNameCompact; }
   .race-icon { width: 64px; height: 64px; }
   .info-text { min-width: 0; margin-left: 0; }
-  .name { font-size: clamp(1.1rem, 5vw, 1.8rem); white-space: normal; overflow-wrap: anywhere; }
+  .name { font-size: clamp(2.2rem, 10vw, 3.6rem); white-space: normal; overflow-wrap: anywhere; }
   .title-char { font-size: 1rem; }
 }
 

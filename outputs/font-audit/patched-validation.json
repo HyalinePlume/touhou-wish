@@ -1,0 +1,22 @@
+{
+  "source_sha256": "3c15643db0ef339e1faf39b8b0c12ffead661565876e617fd25ca5209eabb1ea",
+  "output_sha256": "7562bf43c1b879e5fc28c7864b4a86184d32366390f3b252c8ce505c420499ba",
+  "added_characters": [
+    "咲",
+    "塚",
+    "椛",
+    "燐",
+    "鵺",
+    "猯",
+    "吽",
+    "侘",
+    "袿",
+    "冴"
+  ],
+  "source_mapped_characters": 8104,
+  "patched_mapped_characters": 8114,
+  "character_names_checked": 140,
+  "missing_name_characters": [],
+  "all_original_mapped_outlines_preserved": true,
+  "method": "咲鵺椛吽 traced directly from reference-r3.png; a single shared uniform scale and translation. Other six glyphs retain original-font compositions."
+}

@@ -1,0 +1,77 @@
+{
+  "FZCuJinLing-Regular.ttf": {
+    "mapped_characters": 8104,
+    "cmap_formats": [
+      4
+    ],
+    "character_entries_checked": 140,
+    "missing_entries": [
+      {
+        "name": "十六夜咲夜",
+        "text": "十六夜咲夜",
+        "missing": "咲"
+      },
+      {
+        "name": "小野塚小町",
+        "text": "小野塚小町",
+        "missing": "塚"
+      },
+      {
+        "name": "犬走椛",
+        "text": "犬走椛",
+        "missing": "椛"
+      },
+      {
+        "name": "火焰猫燐",
+        "text": "火焰猫燐",
+        "missing": "燐"
+      },
+      {
+        "name": "封兽鵺",
+        "text": "封兽鵺",
+        "missing": "鵺"
+      },
+      {
+        "name": "二岩猯藏",
+        "text": "二岩猯藏",
+        "missing": "猯"
+      },
+      {
+        "name": "高丽野阿吽",
+        "text": "高丽野阿吽",
+        "missing": "吽"
+      },
+      {
+        "name": "庭渡久侘歌",
+        "text": "庭渡久侘歌",
+        "missing": "侘"
+      },
+      {
+        "name": "埴安神袿姬",
+        "text": "埴安神袿姬",
+        "missing": "袿"
+      },
+      {
+        "name": "尘塚姥芽",
+        "text": "尘塚姥芽",
+        "missing": "塚"
+      },
+      {
+        "name": "冴月麟",
+        "text": "冴月麟",
+        "missing": "冴"
+      }
+    ],
+    "ui_missing": [],
+    "supplemental_source_cjk_missing": "侘冴吽咲囃塚椛毘燐猯袿鵺"
+  },
+  "HYDaHeiJ.ttf": {
+    "mapped_characters": 7615,
+    "cmap_formats": [
+      4
+    ],
+    "character_entries_checked": 140,
+    "missing_entries": [],
+    "supplemental_source_cjk_missing": "侘冴吽咲囃塚椛毘燐猯袿鵺"
+  }
+}

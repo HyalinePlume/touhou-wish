@@ -15,6 +15,30 @@
 </div>
 
 <style>
+  @font-face {
+    font-family: "ProjectHYDaHeiJ";
+    src: url("/fonts/HYDaHeiJ.ttf") format("truetype");
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+  }
+
+  @font-face {
+    font-family: "ProjectKaiTi";
+    src: url("/fonts/KaiTi.ttf") format("truetype");
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+  }
+
+  @font-face {
+    font-family: "FZCuJinLing";
+    src: url("/fonts/FZCuJinLing-Patched.ttf?v=3") format("truetype");
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+  }
+
   /*
    * :global() 穿透 Svelte 组件作用域
    * 这里的样式对整个页面全局生效

@@ -38,8 +38,8 @@ export class Character {
     this.race = race;
     this.artSrc = artSrc;
     this.theme = theme;
-    this.themeStart = themeStart; // 起始播放位置，单位：秒。
-    // 用于去除音乐开头静音部分，使立绘揭示时立刻播放音乐。
+    this.themeStart = themeStart; // 主题曲提前播放量，单位：秒。
+    // 尽量从头提前播放；超出可提前时间的部分才跳过。
     // 保留至小数点后两位
   }
 }

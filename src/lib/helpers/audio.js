@@ -6,7 +6,7 @@
 import { browser } from "$app/environment";
 import { writable } from "svelte/store";
 import { VILLAGER_THEME_START } from "$lib/data/characters.js";
-// 调试开关：true 按人物 themeStart 起播；false 所有主题曲从头播放。
+// 调试开关：true 按 themeStart 提前播放；false 在原定时刻从头播放。
 const ENABLE_THEME_START = true;
 // 音量范围 0～1；以下时长统一为毫秒。
 const BGM_VOLUME = 0.4;
@@ -159,6 +159,33 @@ export function unmuteBgm(duration = BGM_FADE_IN_MS / 1000) {
 
 let themeAudio = null;
 const retiringThemes = new Set();
+const preparedThemes = new Map();
+let cancelPendingTheme = null;
+
+/** 只准备当前及下一位的音乐，不调用 play，也不等待加载完成。 */
+export function preloadThemes(sources = []) {
+  if (!browser) return;
+  const wanted = new Set(sources.filter(Boolean));
+  for (const [src, audio] of preparedThemes) {
+    if (wanted.has(src)) continue;
+    audio.removeAttribute("src");
+    audio.load();
+    preparedThemes.delete(src);
+  }
+  for (const src of wanted) {
+    if (preparedThemes.has(src)) continue;
+    const audio = new Audio();
+    audio.preload = "auto";
+    audio.src = src;
+    audio.load();
+    preparedThemes.set(src, audio);
+  }
+}
+
+export function cancelThemeSchedule() {
+  cancelPendingTheme?.();
+  cancelPendingTheme = null;
+}
 
 function stopThemeAudio(audio) {
   clearInterval(audio._fadeTimer);
@@ -169,6 +196,7 @@ function stopThemeAudio(audio) {
 
 /** 退出总时长可限制在下一首启动之前；优先保留淡出，压缩保持时间。 */
 export function fadeOutTheme({ maxDurationMs = Infinity, skipHold = false, fadeDurationMs = THEME_EXIT_FADE_MS } = {}) {
+  cancelThemeSchedule();
   if (!themeAudio) return;
   const audio = themeAudio;
   themeAudio = null;
@@ -201,47 +229,78 @@ export function fadeOutTheme({ maxDurationMs = Infinity, skipHold = false, fadeD
   }, holdMs);
 }
 
-/** 播放角色主题音乐（独立实例，不干扰 BGM），按文件顶部参数从起始音量渐强到目标音量 */
-export function playTheme(src, themeStart = 0) {
-  if (!browser) return;
-  if (!src) return;
-  stopTheme(); // 新曲开始前清理所有旧音轨，防止长保持时间或后台计时器延迟造成叠播。
+/** delayMs 为原定启动延迟；themeStart 为提前量（秒），不改变动画时序。 */
+export function playTheme(src, themeStart = 0, { delayMs = 0 } = {}) {
+  if (!browser || !src) return;
+  cancelThemeSchedule();
+  const origin = performance.now();
+  const delay = Number.isFinite(delayMs) ? Math.max(0, delayMs) : 0;
+  const fadeAt = origin + delay;
   const fallback = "/sfx/theme/villager_theme.mp3";
-  const audio = new Audio(src);
-  audio.volume = THEME_START_VOLUME;
-  const startPlayback = () => {
-    if (themeAudio !== audio) return;
-    if (ENABLE_THEME_START && Number.isFinite(themeStart) && themeStart > 0) {
-      // 等待元数据后再定位，避免加载期间的跳转被浏览器忽略。
-      audio.currentTime = Number.isFinite(audio.duration)
-        ? Math.min(themeStart, Math.max(0, audio.duration - 0.01)) : themeStart;
-    }
-    /* 默认 2 秒匀渐强 */
-    const fadeSteps = Math.max(1, Math.round(THEME_FADE_IN_MS / 1000 * 30));
-    const fadeDelta = (THEME_TARGET_VOLUME - THEME_START_VOLUME) / fadeSteps;
-    let fadeStep = 0;
-    audio._fadeTimer = setInterval(() => {
-      fadeStep++;
-      audio.volume = THEME_START_VOLUME + fadeDelta * Math.min(fadeStep, fadeSteps);
-      if (fadeStep >= fadeSteps) {
-        clearInterval(audio._fadeTimer);
-        audio._fadeTimer = null;
-      }
-    }, 1000 / 30);
-    audio.play().catch(() => {});
+  let timer;
+  let cancelled = false;
+  const cancel = () => {
+    cancelled = true;
+    clearTimeout(timer);
   };
-  themeAudio = audio;
-  audio.addEventListener("error", () => {
-    if (themeAudio !== audio) return;
-    if (src === fallback) return;  /* 已经是兜底路径，放弃 */
-    playTheme(fallback, VILLAGER_THEME_START);
-  });
-  if (audio.readyState >= 1) startPlayback();
-  else audio.addEventListener("loadedmetadata", startPlayback, { once: true });
+  cancelPendingTheme = cancel;
+
+  function schedule(source, leadSeconds) {
+    const leadMs = ENABLE_THEME_START && Number.isFinite(leadSeconds)
+      ? Math.max(0, leadSeconds) * 1000 : 0;
+    const intendedStart = fadeAt - leadMs;
+    const begin = () => {
+      if (cancelled) return;
+      // 到新曲实际启动时才清理上一曲；预加载和等待不截断旧曲。
+      for (const finish of retiringThemes) finish();
+      if (themeAudio) stopThemeAudio(themeAudio);
+      const audio = preparedThemes.get(source) || new Audio(source);
+      preparedThemes.delete(source);
+      audio.preload = "auto";
+      audio.volume = THEME_START_VOLUME;
+      themeAudio = audio;
+      let started = false;
+      const startPlayback = () => {
+        if (cancelled || themeAudio !== audio || started) return;
+        started = true;
+        // 补偿不可提前的部分；加载较慢时也跟随同一条音乐时间线。
+        const offset = ENABLE_THEME_START
+          ? Math.max(0, (performance.now() - intendedStart) / 1000) : 0;
+        audio.currentTime = Number.isFinite(audio.duration)
+          ? Math.min(offset, Math.max(0, audio.duration - 0.01)) : offset;
+        const updateVolume = () => {
+          const progress = Math.min(1, Math.max(0, (performance.now() - fadeAt) / THEME_FADE_IN_MS));
+          audio.volume = THEME_START_VOLUME + (THEME_TARGET_VOLUME - THEME_START_VOLUME) * progress;
+          if (progress >= 1) {
+            clearInterval(audio._fadeTimer);
+            audio._fadeTimer = null;
+          }
+        };
+        audio._fadeTimer = setInterval(updateVolume, 1000 / 30);
+        updateVolume();
+        audio.play().catch(() => {});
+      };
+      const onError = () => {
+        if (cancelled || themeAudio !== audio) return;
+        started = true;
+        stopThemeAudio(audio);
+        if (source !== fallback) schedule(fallback, VILLAGER_THEME_START);
+      };
+      audio.addEventListener("error", onError, { once: true });
+      if (audio.error) onError();
+      else if (audio.readyState >= 1) startPlayback();
+      else audio.addEventListener("loadedmetadata", startPlayback, { once: true });
+    };
+    const wait = Math.max(0, intendedStart - performance.now());
+    if (wait === 0) begin();
+    else timer = setTimeout(begin, wait);
+  }
+  schedule(src, themeStart);
 }
 
 /** 页面销毁等场景立即停止全部主题音乐，并清理退出计时器。 */
 export function stopTheme() {
+  cancelThemeSchedule();
   for (const finish of retiringThemes) finish();
   if (themeAudio) stopThemeAudio(themeAudio);
   themeAudio = null;

@@ -6,7 +6,7 @@
   import { onMount, onDestroy } from "svelte";
   import { get } from "svelte/store";
   import { fade } from "svelte/transition";
-  import { playSfx, muteBgm, unmuteBgm, playTheme, stopTheme, fadeOutTheme, THEME_RETURN_FADE_MS } from "$lib/helpers/audio.js";
+  import { playSfx, muteBgm, unmuteBgm, playTheme, stopTheme, fadeOutTheme, preloadThemes, cancelThemeSchedule, THEME_RETURN_FADE_MS } from "$lib/helpers/audio.js";
   import { getAvailablePool, villagerCount, setVillagerCount } from "$lib/data/characters.js";
   import PrizeManager from "$lib/components/PrizeManager.svelte";
   import { prizeTitle, prizeStars } from "$lib/data/prizes.js";
@@ -67,9 +67,8 @@
   let currentPrizeName = $state('暂未指定奖品');
   let currentPrizeTitle = $state('');
   let currentPrizeStars = $state(4);
-  const THEME_START_DELAY_MS = 1300; // 新角色动画开始到主题音乐启动的延迟。
+  const THEME_START_DELAY_MS = 1300; // 原定主题曲启动（渐强开始）时间。
   const SHOW2_START_DELAY_MS = 1100; // 第二段亮相音效的启动时间，后续在此调整。
-  let themeTimer;
   let show2Timer;
 
   onMount(() => {
@@ -82,9 +81,10 @@
   });
   onDestroy(() => {
     clearTimeout(errorToastTimer);
-    clearTimeout(themeTimer);
+    cancelThemeSchedule();
     clearTimeout(show2Timer);
     stopTheme();
+    preloadThemes([]);
     if (currentPrizeSrc) URL.revokeObjectURL(currentPrizeSrc);
   });
 
@@ -148,7 +148,7 @@
       if (remaining < count) {
         throw new Error("当前奖池仅剩 " + remaining + " 个角色，无法祈愿 " + count + " 次。请减少次数、增加村民数量或重置祈愿记录。");
       }
-      clearTimeout(themeTimer);
+      cancelThemeSchedule();
       clearTimeout(show2Timer);
       muteBgm();
       drawKey++;
@@ -162,6 +162,8 @@
           theme: "/sfx/theme/" + (char.theme || "villager_theme.mp3"),
           themeStart: char.themeStart ?? 0
         }];
+        // MP4 播放期间即可加载前两首，不启动播放。
+        if (i < 2) prepareResultThemes();
       }
     } catch (error) {
       const completed = drawResult.length;
@@ -176,20 +178,29 @@
   function playResultTheme() {
     playSfx("show1", drawAssets.show1Src);
     clearTimeout(show2Timer);
-    clearTimeout(themeTimer);
+    cancelThemeSchedule();
+    prepareResultThemes();
   }
 
-  function playSecondPhaseAudio() {
+  function prepareResultThemes() {
+    preloadThemes(drawResult.slice(resultIndex, resultIndex + 2).map(item => item.theme));
+  }
+
+  function scheduleResultTheme(delayMs) {
+    const item = drawResult[resultIndex];
+    if (item) playTheme(item.theme, item.themeStart ?? 0, { delayMs });
+  }
+
+  function startResultAudio(suspense) {
+    if (!suspense) scheduleResultTheme(THEME_START_DELAY_MS);
+  }
+
+  function playSecondPhaseAudio(suspense) {
     clearTimeout(show2Timer);
     show2Timer = setTimeout(() => {
       if (showWishResult) playSfx("show2", drawAssets.show2Src);
     }, Math.max(0, SHOW2_START_DELAY_MS - RESULT_FIRST_PHASE_MS));
-    const theme = drawResult[resultIndex]?.theme;
-    const themeStart = drawResult[resultIndex]?.themeStart ?? 0;
-    clearTimeout(themeTimer);
-    themeTimer = setTimeout(() => {
-      if (showWishResult || showWishSummary) playTheme(theme, themeStart);
-    }, Math.max(0, THEME_START_DELAY_MS - RESULT_FIRST_PHASE_MS));
+    if (suspense) scheduleResultTheme(Math.max(0, THEME_START_DELAY_MS - RESULT_FIRST_PHASE_MS));
   }
 
   function finishMeteor() {
@@ -211,7 +222,7 @@
   function handleCloseResult() {
     clearTimeout(show2Timer);
     if (resultIndex + 1 < drawResult.length) {
-      clearTimeout(themeTimer);
+      cancelThemeSchedule();
       fadeOutTheme({ maxDurationMs: THEME_START_DELAY_MS });
       resultIndex++;
       playResultTheme();
@@ -227,9 +238,10 @@
   }
 
   function finishResults() {
-    clearTimeout(themeTimer);
+    cancelThemeSchedule();
     clearTimeout(show2Timer);
     fadeOutTheme({ skipHold: true, fadeDurationMs: THEME_RETURN_FADE_MS });
+    preloadThemes([]);
     showWishSummary = false;
     unmuteBgm();
     drawResult = [];
@@ -293,6 +305,8 @@
               <div class="featured-quote">"命运，在此刻交织——"</div>
             </div>
  -->
+            <div class="villager-count-badge">当前村民数：{$villagerCount}</div>
+
             <!-- 奖品预览区 -->
             <div class="prize-preview">
               <div class="prize-label">{currentPrizeTitle || "当前奖品"}</div>
@@ -401,7 +415,7 @@
 {#if showWishResult}
   {#key `${drawKey}:${resultIndex}`}
     <WishResult list={[drawResult[resultIndex]]} assets={drawAssets} skip={false} onClose={handleCloseResult}
-      {suspenseEnabled} onSecondPhase={playSecondPhaseAudio}
+      {suspenseEnabled} onSecondPhase={playSecondPhaseAudio} onPlaybackStart={startResultAudio}
       position={resultIndex + 1} total={drawResult.length} />
   {/key}
 {/if}
@@ -453,23 +467,30 @@
     margin-left: 0;
   }
   .prize-label {
+    font-family: "FZCuJinLing", "Microsoft YaHei", sans-serif;
     font-size: 1.4rem;
     color: rgba(0, 0, 0, 1);
     letter-spacing: 0.15em;
     margin-bottom: 0.4rem;
   }
   .settings-title {
+    font-family: "FZCuJinLing", "Microsoft YaHei", sans-serif;
     position: absolute;
     top: 10%;
     left: 50%;
     transform: translateX(-50%);
     z-index: 5;
-    font-size: 1.2rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: #d4b87a;
     letter-spacing: 0.2em;
   }
-    .panel-title {
+  .panel-title:not(.suspense-heading),
+  .suspense-heading > span {
+    font-family: "FZCuJinLing", "Microsoft YaHei", sans-serif;
+  }
+
+  .panel-title {
     text-align: left;
     font-size: 1rem;
     font-weight: 600;
@@ -623,6 +644,21 @@
 
   .corner.br { bottom: 10px; right: 10px; border-width: 0 2px 2px 0; }
 
+  .villager-count-badge {
+    position: absolute;
+    top: 5%;
+    right: 5%;
+    z-index: 5;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid #dfbf8e;
+    border-radius: 12px;
+    background: rgba(247, 239, 223, 0.82);
+    color: #594632;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+
   .card-info {
     position: absolute; 
     right: 5%; 
@@ -653,9 +689,10 @@
   /* 奖品预览外层容器 */
   .prize-preview {
     position: absolute;
-    left: 5%;
-    top: 50%;
-    transform: translateY(-50%);
+    left: 7%;
+    bottom: calc(7% + 16px);
+    transform: scale(0.9);
+    transform-origin: bottom left;
     z-index: 5;
     width:  25%;
     display: flex;
@@ -664,13 +701,23 @@
     justify-content: space-between;
     gap:  3px;
   }
+  .prize-preview::before {
+    content: "";
+    position: absolute;
+    inset: -16px -20px;
+    z-index: -1;
+    border: 1px solid #dfbf8e;
+    border-radius: 20px;
+    background: rgba(247, 239, 223, 0.82);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.16);
+    pointer-events: none;
+  }
+
   .prize-img-box {
     height: 100%;
     max-height: 100%;
     aspect-ratio: 1;
-    border: 1px solid rgba(180, 160, 120, 0.35);
     border-radius: 4px;
-    background: rgba(0, 0, 0, 0.3);
     display: flex;
     align-items: center;
     justify-content: center;

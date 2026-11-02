@@ -1,0 +1,38 @@
+{
+  "reference_sha256": "6856ee790df9b006248d508ed87b5d54e20e99ad5eaef29188788b53101233e1",
+  "uniform_scale": 1.4409937888198758,
+  "translation": [
+    12.720496894409933,
+    205
+  ],
+  "per_component_adjustments": false,
+  "changed_characters": [
+    "吽",
+    "咲",
+    "椛",
+    "鵺"
+  ],
+  "all_other_glyphs_preserved": true,
+  "glyphs": {
+    "咲": {
+      "ink_intersection_over_union": 0.97683,
+      "pixels_outside_one_source_pixel_tolerance": 0,
+      "comparison_pixels": 412160
+    },
+    "鵺": {
+      "ink_intersection_over_union": 0.97555,
+      "pixels_outside_one_source_pixel_tolerance": 0,
+      "comparison_pixels": 412160
+    },
+    "椛": {
+      "ink_intersection_over_union": 0.97702,
+      "pixels_outside_one_source_pixel_tolerance": 0,
+      "comparison_pixels": 412160
+    },
+    "吽": {
+      "ink_intersection_over_union": 0.97477,
+      "pixels_outside_one_source_pixel_tolerance": 0,
+      "comparison_pixels": 412160
+    }
+  }
+}

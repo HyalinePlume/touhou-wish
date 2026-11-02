@@ -1,0 +1,17 @@
+{
+  "fontStatus": 200,
+  "requestedFonts": [
+    "http://127.0.0.1:4207/fonts/FZCuJinLing-Patched.ttf?v=3"
+  ],
+  "missingGlyphProbe": {
+    "fonts": [
+      {
+        "familyName": "XTM JinLing Patched",
+        "postScriptName": "XTMJinLingPatched-Regular",
+        "isCustomFont": true,
+        "glyphCount": 10
+      }
+    ]
+  },
+  "pageErrors": []
+}
