@@ -103,7 +103,7 @@ const options = {
     app: ({ head, body, assets, nonce, env }) => '<!DOCTYPE html>\n<html lang="zh-CN">\n  <head>\n    <meta charset="utf-8" />\n    <link rel="icon" href="/img/toplogo.png" />\n    <meta name="viewport" content="width=device-width, initial-scale=1" />\n    ' + head + '\n  </head>\n  <body>\n    <div style="display: contents">' + body + "</div>\n  </body>\n</html>\n",
     error
   },
-  version_hash: "9kbdeb"
+  version_hash: "9h3q6q"
 };
 async function get_hooks() {
   let handle;

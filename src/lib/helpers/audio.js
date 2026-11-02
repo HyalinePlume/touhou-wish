@@ -4,6 +4,9 @@
  * 自动播放：刷新后尝试自动播放，若被浏览器阻止则等首次用户交互后启动
  */
 import { browser } from "$app/environment";
+import { VILLAGER_THEME_START } from "$lib/data/characters.js";
+// 调试开关：true 按人物 themeStart 起播；false 所有主题曲从头播放。
+const ENABLE_THEME_START = true;
 // 音量范围 0～1；以下时长统一为毫秒。
 const BGM_VOLUME = 0.4;
 const BGM_FADE_IN_MS = 1000;
@@ -186,32 +189,42 @@ export function fadeOutTheme({ maxDurationMs = Infinity, skipHold = false, fadeD
 }
 
 /** 播放角色主题音乐（独立实例，不干扰 BGM），按文件顶部参数从起始音量渐强到目标音量 */
-export function playTheme(src) {
+export function playTheme(src, themeStart = 0) {
   if (!browser) return;
   if (!src) return;
   stopTheme(); // 新曲开始前清理所有旧音轨，防止长保持时间或后台计时器延迟造成叠播。
   const fallback = "/sfx/theme/villager_theme.mp3";
   const audio = new Audio(src);
   audio.volume = THEME_START_VOLUME;
-  /* 默认 2 秒匀渐强；旧注释中的 3 秒与实际代码不符。 */
-  const fadeSteps = Math.max(1, Math.round(THEME_FADE_IN_MS / 1000 * 30));
-  const fadeDelta = (THEME_TARGET_VOLUME - THEME_START_VOLUME) / fadeSteps;
-  let fadeStep = 0;
-  audio._fadeTimer = setInterval(() => {
-    fadeStep++;
-    audio.volume = THEME_START_VOLUME + fadeDelta * Math.min(fadeStep, fadeSteps);
-    if (fadeStep >= fadeSteps) {
-      clearInterval(audio._fadeTimer);
-      audio._fadeTimer = null;
+  const startPlayback = () => {
+    if (themeAudio !== audio) return;
+    if (ENABLE_THEME_START && Number.isFinite(themeStart) && themeStart > 0) {
+      // 等待元数据后再定位，避免加载期间的跳转被浏览器忽略。
+      audio.currentTime = Number.isFinite(audio.duration)
+        ? Math.min(themeStart, Math.max(0, audio.duration - 0.01)) : themeStart;
     }
-  }, 1000 / 30);
+    /* 默认 2 秒匀渐强 */
+    const fadeSteps = Math.max(1, Math.round(THEME_FADE_IN_MS / 1000 * 30));
+    const fadeDelta = (THEME_TARGET_VOLUME - THEME_START_VOLUME) / fadeSteps;
+    let fadeStep = 0;
+    audio._fadeTimer = setInterval(() => {
+      fadeStep++;
+      audio.volume = THEME_START_VOLUME + fadeDelta * Math.min(fadeStep, fadeSteps);
+      if (fadeStep >= fadeSteps) {
+        clearInterval(audio._fadeTimer);
+        audio._fadeTimer = null;
+      }
+    }, 1000 / 30);
+    audio.play().catch(() => {});
+  };
   themeAudio = audio;
   audio.addEventListener("error", () => {
     if (themeAudio !== audio) return;
     if (src === fallback) return;  /* 已经是兜底路径，放弃 */
-    playTheme(fallback);
+    playTheme(fallback, VILLAGER_THEME_START);
   });
-  audio.play().catch(() => {});
+  if (audio.readyState >= 1) startPlayback();
+  else audio.addEventListener("loadedmetadata", startPlayback, { once: true });
 }
 
 /** 页面销毁等场景立即停止全部主题音乐，并清理退出计时器。 */

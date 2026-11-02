@@ -159,7 +159,8 @@
         drawResult = [...drawResult, {
           name: char.name, title: char.title, race: char.race, type: "character",
           artSrc: char.artSrc, rarity: drawAssets.rarity,
-          theme: "/sfx/theme/" + (char.theme || "villager_theme.mp3")
+          theme: "/sfx/theme/" + (char.theme || "villager_theme.mp3"),
+          themeStart: char.themeStart ?? 0
         }];
       }
     } catch (error) {
@@ -184,9 +185,10 @@
       if (showWishResult) playSfx("show2", drawAssets.show2Src);
     }, Math.max(0, SHOW2_START_DELAY_MS - RESULT_FIRST_PHASE_MS));
     const theme = drawResult[resultIndex]?.theme;
+    const themeStart = drawResult[resultIndex]?.themeStart ?? 0;
     clearTimeout(themeTimer);
     themeTimer = setTimeout(() => {
-      if (showWishResult || showWishSummary) playTheme(theme);
+      if (showWishResult || showWishSummary) playTheme(theme, themeStart);
     }, Math.max(0, THEME_START_DELAY_MS - RESULT_FIRST_PHASE_MS));
   }
 

@@ -5,6 +5,18 @@ function onDestroy(fn) {
   /** @type {SSRContext} */
   ssr_context.r.on_destroy(fn);
 }
+const STORAGE_KEY = "xtm_villager_count";
+function getStoredCount() {
+  if (typeof localStorage === "undefined") return 50;
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw === null) return 50;
+  const n = parseInt(raw, 10);
+  return Number.isNaN(n) ? 50 : Math.max(0, Math.min(99, n));
+}
+const villagerCount = writable(getStoredCount());
+villagerCount.subscribe((n) => {
+  if (typeof localStorage !== "undefined") localStorage.setItem(STORAGE_KEY, String(n));
+});
 let userBgmMuted = false;
 function isBgmMuted() {
   return userBgmMuted;
@@ -22,18 +34,6 @@ function stopTheme() {
   if (themeAudio) stopThemeAudio(themeAudio);
   themeAudio = null;
 }
-const STORAGE_KEY = "xtm_villager_count";
-function getStoredCount() {
-  if (typeof localStorage === "undefined") return 50;
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (raw === null) return 50;
-  const n = parseInt(raw, 10);
-  return Number.isNaN(n) ? 50 : Math.max(0, Math.min(99, n));
-}
-const villagerCount = writable(getStoredCount());
-villagerCount.subscribe((n) => {
-  if (typeof localStorage !== "undefined") localStorage.setItem(STORAGE_KEY, String(n));
-});
 const PRIZE_TIERS = [
   { value: "special", label: "特等奖", stars: 6 },
   { value: "first", label: "一等奖", stars: 5 },
