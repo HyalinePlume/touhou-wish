@@ -1,5 +1,5 @@
 <script>
-  import { isBgmMuted, setBgmMuted } from "$lib/helpers/audio.js";
+  import { isBgmMuted, setBgmMuted, bgmPlaying } from "$lib/helpers/audio.js";
   import HomeContentEditor from "$lib/components/HomeContentEditor.svelte";
   import DialogCloseButton from "$lib/components/DialogCloseButton.svelte";
 
@@ -14,7 +14,7 @@
 </script>
 
 <div class="home-tools" role="group" aria-label="音乐、文本编辑与帮助">
-  <button class="round-button music-button" class:muted={musicMuted}
+  <button class="round-button music-button" class:muted={musicMuted} class:playing={$bgmPlaying}
     type="button" aria-label="背景音乐静音" aria-pressed={musicMuted}
     title={musicMuted ? "恢复背景音乐" : "静音背景音乐"} onclick={toggleMusic}>
     <span class="record" aria-hidden="true">
@@ -81,7 +81,7 @@
   .record-shine { background: conic-gradient(from 130deg, transparent 0deg, #d8e5ff70 5deg, #ffffff80 12deg, transparent 35deg, transparent 180deg, #d8e5ff70 185deg, #ffffff80 192deg, transparent 215deg); }
   .record-rim { box-sizing: border-box; border: 1px solid #050608; }
   .record-center { position: absolute; left: 44%; top: 44%; width: 12%; height: 12%; box-sizing: border-box; border: 1px solid #050608; box-shadow: 0 0 0 1px #050608; border-radius: 100%; background: #eee9df; }
-  .muted .record-art { animation-play-state: paused; }
+  .music-button:not(.playing) .record-art { animation-play-state: paused; }
   @keyframes record-spin { to { transform: rotate(360deg); } }
   .help-dialog { position: fixed; inset: 0; margin: auto; width: min(480px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow-y: auto; padding: 28px; border: 1px solid #dfbf8e; border-radius: 20px; background: #f7efdf; color: #594632; box-shadow: 0 24px 80px #0005; }
   .help-dialog::backdrop { background: #101a28b8; backdrop-filter: blur(4px); }

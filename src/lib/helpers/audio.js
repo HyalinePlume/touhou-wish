@@ -4,6 +4,7 @@
  * 自动播放：刷新后尝试自动播放，若被浏览器阻止则等首次用户交互后启动
  */
 import { browser } from "$app/environment";
+import { writable } from "svelte/store";
 import { VILLAGER_THEME_START } from "$lib/data/characters.js";
 // 调试开关：true 按人物 themeStart 起播；false 所有主题曲从头播放。
 const ENABLE_THEME_START = true;
@@ -22,8 +23,7 @@ const sources = {
   wishBacksound: "/sfx/wish_backsound.mp3",
 };
 const cache = {};
-/* BGM 只能启动一次，防止 HMR 热更新或组件重挂导致重叠播放 */
-let bgmStarted = false;
+export const bgmPlaying = writable(false);
 let userBgmMuted = false;
 let bgmSuppressed = false;
 let savedBgmVolume = BGM_VOLUME;
@@ -34,9 +34,34 @@ if (browser) {
     if (name === "wishBacksound") {
       audio.loop = true;
       audio.volume = BGM_VOLUME;
+      let playing = false;
+      const syncPlaying = () => bgmPlaying.set(playing && !audio.paused && !audio.muted && audio.volume > 0);
+      audio.addEventListener("playing", () => { playing = true; syncPlaying(); });
+      for (const event of ["pause", "waiting", "ended", "error", "emptied"]) {
+        audio.addEventListener(event, () => { playing = false; syncPlaying(); });
+      }
+      audio.addEventListener("volumechange", syncPlaying);
     }
     cache[name] = audio;
   });
+}
+// 每条音轨只保留一组重试监听；失败后等待下一次有效交互。
+async function startBgm(audio) {
+  if (audio._playPending) return;
+  audio._playPending = true;
+  try {
+    await audio.play();
+    audio._removeRetry?.();
+  } catch {
+    if (audio._removeRetry) return;
+    const resume = () => startBgm(audio);
+    const events = ["click", "touchend", "keydown"];
+    audio._removeRetry = () => {
+      for (const event of events) document.removeEventListener(event, resume);
+      audio._removeRetry = null;
+    };
+    for (const event of events) document.addEventListener(event, resume);
+  } finally { audio._playPending = false; }
 }
 /** 播放音效。BGM 若被浏览器拦下，会等首次用户交互后自动重试 */
 /** 播放叮声：每次新建 Audio 实例，不掐断前一次 */
@@ -59,38 +84,15 @@ export function playSfx(name = "click", src) {
   }
   const audio = cache[name];
   if (!audio) return false;
-  /* BGM 特殊处理：已启动过一次就不再重新 play，防止重叠 */
+  // BGM 保持播放进度，所有启动入口共用同一套失败重试。
   if (name === "wishBacksound") {
-    if (bgmStarted) {
-      /* 如果 BGM 之前被静音了，只恢复音量，不重新 play */
-      if (audio.paused) {
-        audio.play().catch(() => {});
-      }
-      return true;
-    }
-    bgmStarted = true;
+    if (audio.paused) startBgm(audio);
+    return true;
   }
-  if (name === "wishBacksound" && !audio.paused) return true;
-  if (name !== "wishBacksound") { audio.load(); }
+  audio.load();
   audio.currentTime = 0;
   const promise = audio.play();
-  if (promise) {
-    promise.catch(() => {
-      // BGM 被浏览器自动播放策略拦下 → 等首次用户交互再试
-      if (name === "wishBacksound" && audio._retryOnInteract !== false) {
-        audio._retryOnInteract = false;
-        const resume = () => {
-          audio.play().catch(() => {});
-          document.removeEventListener("click", resume);
-          document.removeEventListener("touchstart", resume);
-          document.removeEventListener("keydown", resume);
-        };
-        document.addEventListener("click", resume, { once: true });
-        document.addEventListener("touchstart", resume, { once: true });
-        document.addEventListener("keydown", resume, { once: true });
-      }
-    });
-  }
+  if (promise) promise.catch(() => {});
   return true;
 }
 export function isBgmMuted() { return userBgmMuted; }
@@ -128,7 +130,7 @@ export function unmuteBgm(duration = BGM_FADE_IN_MS / 1000) {
   bgm._fadeTimer = null;
   if (userBgmMuted) { bgm.volume = 0; return; }
   /* 如果 BGM 因浏览器策略暂停了，先恢复播放 */
-  if (bgm.paused) { bgm.play().catch(() => {}); }
+  if (bgm.paused) startBgm(bgm);
   bgm._fadeTimer && clearInterval(bgm._fadeTimer);
   const target = savedBgmVolume;
   const steps = Math.max(1, duration * 30);
