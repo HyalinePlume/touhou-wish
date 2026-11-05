@@ -938,22 +938,29 @@ const baseCharacters = [
     "闪耀的日之光",
     3,
     "/chr/sunny_milk.png",
-    "sanyousei_say_ya_deFirstVerse.mp3", // 三妖精 SAY YA!!! 从第一段副歌开始
-    0.10 
+    "EaLND_01.mp3", // Sunny Rutile Flection
+    0.09
+    // "sanyousei_say_ya_deFirstVerse.mp3",
+    // 0.10 
+    // 三妖精备选曲：三妖精SAY YA，从副歌直接开始
   ),
   new Character("露娜切露德",
     "静谧的月之光",
     3,
     "/chr/luna_child.png",
-    "sanyousei_say_ya_deFirstVerse.mp3", // 三妖精 SAY YA!!! 从第一段副歌开始
-    0.10 
+    "EaLND_02.mp3", // 因夜失眠
+    0.10
+    // "sanyousei_say_ya_deFirstVerse.mp3",
+    // 0.10 
   ),
   new Character("斯塔萨菲雅",
     "倾泻的星之光",
     3,
     "/chr/star_sapphire.png",
-    "sanyousei_say_ya_deFirstVerse.mp3", // 三妖精 SAY YA!!! 从第一段副歌开始
-    0.10 
+    "EaLND_03.mp3", // 妖精灿烂的样子
+    0.49
+    // "sanyousei_say_ya_deFirstVerse.mp3",
+    // 0.10 
   ),
   new Character("茨木华扇",
     "片腕有角的仙人",
