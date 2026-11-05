@@ -1034,7 +1034,7 @@ const baseCharacters = [
     0.52 
   ),
   new Character("Zun",
-    "一切幻想的起源",
+    "博丽神主",
     0,
     "/chr/zun.png",
     "hr03_01.mp3", // 童祭　～ Innocent Treasures
