@@ -1,8 +1,10 @@
+import { DEFAULT_COLORS, validColor } from "$lib/helpers/homeColors.js";
 import { writable } from "svelte/store";
 import { createHomeImageView, isLocalImage, prepareHomeImage } from "$lib/helpers/homeImages.js";
 
 /** 首页文案和图片的默认值；图片值为可用于 CSS 的图片地址。 */
 export const DEFAULT_HOME_CONTENT = Object.freeze({
+  ...DEFAULT_COLORS,
   wishTitle: "东方杏坛铭 · 抽奖祈愿",
   wishSubtitle: "鸟类都喜欢亮晶晶的小玩意……人又何尝不是呢？",
   mainVisual: "/img/visual.png",
@@ -14,7 +16,10 @@ export const wishSubtitle = writable(DEFAULT_HOME_CONTENT.wishSubtitle);
 export const mainVisual = writable(DEFAULT_HOME_CONTENT.mainVisual);
 export const backgroundImage = writable(DEFAULT_HOME_CONTENT.backgroundImage);
 
-const contentStores = { wishTitle, wishSubtitle, mainVisual, backgroundImage };
+export const titleColor = writable(DEFAULT_COLORS.titleColor);
+export const toolsColor = writable(DEFAULT_COLORS.toolsColor);
+export const drawColor = writable(DEFAULT_COLORS.drawColor);
+const contentStores = { wishTitle, wishSubtitle, mainVisual, backgroundImage, titleColor, toolsColor, drawColor };
 let loadPromise;
 const imageKeys = ["mainVisual", "backgroundImage"];
 const imageViews = {};
@@ -51,6 +56,7 @@ function transaction(mode, run) {
 function applyContent(values) {
   for (const [key, store] of Object.entries(contentStores)) {
     const value = values?.[key];
+    if (key in DEFAULT_COLORS && !validColor(value)) continue;
     if (imageKeys.includes(key)) {
       if (typeof value !== "string" && !isLocalImage(value)) continue;
       if (imageViews[key]?.value === value) continue;
@@ -85,7 +91,7 @@ export async function setHomeContent(values) {
   values = { ...values };
   // 先检查所有字段，避免错误输入导致部分字段已被修改。
   for (const [key, value] of Object.entries(values)) {
-    if (!Object.hasOwn(contentStores, key) || (typeof value !== "string" && !(imageKeys.includes(key) && isLocalImage(value)))) {
+    if ((key in DEFAULT_COLORS && !validColor(value)) || !Object.hasOwn(contentStores, key) || (typeof value !== "string" && !(imageKeys.includes(key) && isLocalImage(value)))) {
       throw new TypeError(`无效的首页内容字段或值：${key}`);
     }
   }

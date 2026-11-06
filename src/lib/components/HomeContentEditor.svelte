@@ -1,10 +1,13 @@
 <script>
+  import { autoHomeColor } from "$lib/helpers/autoHomeColors.js";
   import { onDestroy } from "svelte";
   import { createHomeImageView, prepareHomeImage } from "$lib/helpers/homeImages.js";
   import { get } from "svelte/store";
   import DialogCloseButton from "$lib/components/DialogCloseButton.svelte";
-  import { wishTitle, wishSubtitle, getHomeImage, loadHomeContent, setHomeContent, resetWishTitle, resetWishSubtitle, resetMainVisual, resetBackgroundImage } from "$lib/data/homeContent.js";
+  import { DEFAULT_COLORS, colorStyle } from "$lib/helpers/homeColors.js";
+  import { titleColor, toolsColor, drawColor, wishTitle, wishSubtitle, getHomeImage, loadHomeContent, setHomeContent, resetWishTitle, resetWishSubtitle, resetMainVisual, resetBackgroundImage } from "$lib/data/homeContent.js";
 
+  const colorFields=[{key:'titleColor',label:'左上角文字颜色'},{key:'toolsColor',label:'右上角按钮颜色'},{key:'drawColor',label:'底部祈愿按钮颜色'}];
   let dialog;
   let draft = $state({ wishTitle: "", wishSubtitle: "", mainVisual: "", backgroundImage: "" });
   let images = $state.raw({ mainVisual: null, backgroundImage: null });
@@ -35,7 +38,7 @@
 
   function loadCurrent() {
     releaseDraftImages();
-    draft = { wishTitle: get(wishTitle), wishSubtitle: get(wishSubtitle), mainVisual: "", backgroundImage: "" };
+    draft = { titleColor: get(titleColor), toolsColor: get(toolsColor), drawColor: get(drawColor), wishTitle: get(wishTitle), wishSubtitle: get(wishSubtitle), mainVisual: "", backgroundImage: "" };
     setImage("mainVisual", getHomeImage("mainVisual"));
     setImage("backgroundImage", getHomeImage("backgroundImage"));
     error = "";
@@ -74,6 +77,21 @@
       const view = createHomeImageView(value);
       ownedViews.add(view);
       setImage(key, view);
+    } catch (cause) {
+      if (session === currentSession) error = cause.message;
+    } finally {
+      if (session === currentSession) loading = false;
+    }
+  }
+
+  async function autoColor(key) {
+    if (loading) return;
+    const currentSession = session;
+    loading = true;
+    error = '';
+    try {
+      const color = await autoHomeColor(images.backgroundImage.url, key);
+      if (session === currentSession) draft[key] = color;
     } catch (cause) {
       if (session === currentSession) error = cause.message;
     } finally {
@@ -135,7 +153,15 @@
         <button class="restore" type="button" disabled={loading} onclick={() => restore("wishSubtitle", resetWishSubtitle)}>恢复默认值</button>
       </div>
       <textarea id="home-wish-subtitle" rows="3" disabled={loading} bind:value={draft.wishSubtitle}></textarea>
-      <div class="image-fields">
+      <fieldset>
+<legend>界面配色</legend>
+<p class="note">每个区域选择一种主色，自动搭配文字、边框和阴影。“自动选色”根据当前背景图和主页位置推荐颜色，可继续微调，保存后应用。</p>
+{#each colorFields as field}
+<div class="color-row"><label for={field.key}>{field.label}</label><input id={field.key} type="color" value={draft[field.key] || DEFAULT_COLORS[field.key]} disabled={loading} oninput={event => draft[field.key] = event.currentTarget.value} /><button class="restore" type="button" disabled={loading} onclick={() => draft[field.key] = DEFAULT_COLORS[field.key]}>恢复默认</button><button class="restore" type="button" disabled={loading} onclick={() => autoColor(field.key)}>自动选色</button></div>
+{/each}
+<div class="color-preview" style={colorStyle(draft)} aria-label="配色预览"><div class="sample-title">✦ {draft.wishTitle || '标题'}<small>{draft.wishSubtitle || '副标题'}</small></div><span class="sample-tool">?</span><span class="sample-draw">✦ 祈愿一次</span></div>
+</fieldset>
+<div class="image-fields">
       <fieldset>
         <legend>主视觉图</legend>
         <div class="field-heading">
@@ -175,6 +201,12 @@
 </dialog>
 
 <style>
+.color-row {display:flex;align-items:center;gap:10px;flex-wrap:wrap;}.color-row label {flex:1;}input[type="color"] {width:42px;height:34px;padding:2px;cursor:pointer;}
+.color-preview {padding:16px;border-radius:8px;background:linear-gradient(110deg,#34434d 50%,#ddd6c6 50%);display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
+.sample-title {width:100%;color:var(--home-title);}.sample-title small {display:block;margin-top:6px;}
+.sample-tool {display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--home-tools);color:var(--home-ink);border:1px solid var(--home-toolBorder);}
+.sample-draw {padding:10px 20px;border-radius:30px;background:linear-gradient(135deg,var(--home-start),var(--home-end));color:var(--home-text);border:1px solid var(--home-drawBorder);}
+
   dialog { position: fixed; inset: 0; margin: auto; width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: hidden; padding: 0; border: 1px solid #dfbf8e; border-radius: 20px; background: #f7efdf; color: #594632; box-shadow: 0 24px 80px #0005; }
   form { display: flex; flex-direction: column; max-height: calc(100dvh - 34px); }
   .scroll-content { min-height: 0; overflow-y: auto; padding: 4px 28px 0; }

@@ -142,6 +142,10 @@
 </dialog>
 
 <style>
+.home-tools .round-button {background:var(--home-tools);color:var(--home-ink);border-color:var(--home-toolBorder);box-shadow:0 3px 12px color-mix(in srgb,var(--home-toolShadow) 20%,transparent),inset 0 0 0 3px color-mix(in srgb,var(--home-toolBorder) 18%,transparent);}
+.home-tools .round-button:hover {background:var(--home-hover);box-shadow:0 5px 16px color-mix(in srgb,var(--home-toolShadow) 30%,transparent);}
+.home-tools .round-button:focus-visible {outline:2px solid var(--home-toolBorder);outline-offset:4px;}
+
   .home-tools { position: fixed; top: max(24px, env(safe-area-inset-top)); right: max(28px, env(safe-area-inset-right)); z-index: 12; display: flex; gap: 12px; }
   .round-button { width: 45px; height: 45px; padding: 0; display: grid; place-items: center; border-radius: 50%; border: 1px solid #fff4db; background: #f3e5cb; color: #be702f; box-shadow: 0 3px 12px #3b25132b, inset 0 0 0 3px #e7cfa65c; cursor: pointer; transition: background .2s, transform .2s, box-shadow .2s; }
   .round-button:hover { background: #fff1d8; transform: translateY(-2px); box-shadow: 0 5px 16px #3b25133b; }

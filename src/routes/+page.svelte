@@ -17,7 +17,8 @@
   import MissingPrizePrompt from "$lib/components/MissingPrizePrompt.svelte";
   import MultiWishPrompt from "$lib/components/MultiWishPrompt.svelte";
   import HomeTools from "$lib/components/HomeTools.svelte";
-  import { wishTitle, wishSubtitle, mainVisual, backgroundImage, loadHomeContent } from "$lib/data/homeContent.js";
+  import { colorStyle } from "$lib/helpers/homeColors.js";
+  import { titleColor, toolsColor, drawColor, wishTitle, wishSubtitle, mainVisual, backgroundImage, loadHomeContent } from "$lib/data/homeContent.js";
 
   let showMeteor = $state(false);
   let showWishResult = $state(false);
@@ -273,7 +274,7 @@
 
 </script>
 
-<div class="root" inert={showWishSummary}>
+<div class="root" style={colorStyle({titleColor:$titleColor, toolsColor:$toolsColor, drawColor:$drawColor})} inert={showWishSummary}>
   {#if !showMeteor && !showWishResult && !showWishSummary}<HomeTools />{/if}
   <section style:background-image={`url(${JSON.stringify($backgroundImage)})`}>
     <div class="col top">
@@ -430,6 +431,12 @@
 {/if}
 
 <style>
+.root .wish-title,.root .wish-desc,.root .logo-star {color:var(--home-title);}
+.root .draw-btn {background:linear-gradient(135deg,var(--home-start),var(--home-end));color:var(--home-text);box-shadow:0 0 0 1px var(--home-drawBorder),0 4px 20px color-mix(in srgb,var(--home-drawShadow) 30%,transparent);}
+.root .draw-btn:hover {box-shadow:0 0 0 1px var(--home-drawBorder),0 6px 30px color-mix(in srgb,var(--home-drawShadow) 50%,transparent);}
+.root .draw-btn:active {box-shadow:0 0 0 1px var(--home-drawBorder),0 2px 10px color-mix(in srgb,var(--home-drawShadow) 30%,transparent);}
+.root .draw-btn:focus-visible {outline:2px solid var(--home-drawBorder);outline-offset:4px;}
+
   :global(body) {
     margin: 0; padding: 0; background: #0f0f23;
     font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
